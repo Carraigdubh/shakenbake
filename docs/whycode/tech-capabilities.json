@@ -1,0 +1,258 @@
+{
+  "lastUpdatedAt": "2026-02-20T16:00:00Z",
+  "lastUpdatedRunId": "whycode-preflight-20260220",
+  "convexContext": {
+    "mode": "not-applicable",
+    "evidence": [
+      "No convex dependency detected in project",
+      "No convex/ folder referenced in architecture",
+      "No .env.local with CONVEX_DEPLOYMENT marker",
+      "Cloud backend uses Postgres + Prisma/Drizzle, not Convex"
+    ]
+  },
+  "deploymentContext": {
+    "mode": "vercel-cli",
+    "vercelCliAvailable": false,
+    "githubIntegrationDetected": false,
+    "evidence": [
+      "Cloud app (apps/cloud) targets Vercel as reference platform",
+      "Architecture specifies 'apps/cloud — Next.js on Vercel'",
+      "No .github/workflows found (pre-code phase)",
+      "No .vercel/ or vercel.json found (pre-code phase)",
+      "Web and cloud examples use Vercel as assumed deployment target"
+    ]
+  },
+  "technologies": [
+    {
+      "name": "React",
+      "category": "frontend-web",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: packages/web and packages/react-native use React/React Native",
+        "ShakeNbake-PRD.md: React 18+ required for web SDK",
+        "packages/web uses React context provider (ShakeNbakeProvider)",
+        "Cloud app: Next.js with React components"
+      ],
+      "recommendedSpecialistAgent": "whycode:frontend-web-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "React Native / Expo",
+      "category": "frontend-native",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: packages/react-native is Expo SDK with development builds",
+        "ShakeNbake-PRD.md: Expo SDK 52+ with development build required (no Expo Go)",
+        "react-native-shake dependency for shake gesture detection",
+        "react-native-view-shot for screenshot capture",
+        "Expo 52+, React Native 0.76+, New Architecture supported"
+      ],
+      "recommendedSpecialistAgent": "whycode:frontend-native-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Expo",
+      "category": "frontend-native",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "ShakeNbake-PRD.md Section 2: 'npx expo install @shakenbake/react-native'",
+        "Section 5: 'Expo SDK 52+ (development build required — not Expo Go)'",
+        "Section 5: Uses expo-av, expo-device, expo-battery, expo-network, expo-localization, expo-screen-orientation, expo-constants, expo-updates",
+        "CLAUDE.md: 'Expo development build (not Expo Go) due to native module dependencies'"
+      ],
+      "recommendedSpecialistAgent": "whycode:frontend-native-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Next.js",
+      "category": "frontend-web",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: apps/cloud is 'Next.js on Vercel'",
+        "ShakeNbake-PRD.md Section 2: 'Web (Next.js)' quick start example",
+        "Section 8: Cloud app uses 'Next.js (App Router)' with examples at 'app/api/shakenbake/route.ts'",
+        "Cloud tech stack lists 'Next.js (App Router)'"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-nextjs-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Turborepo",
+      "category": "integration",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'Monorepo (Turborepo)' at top-level architecture",
+        "ShakeNbake-PRD.md Section 3: 'Monorepo Layout' shows packages/ and apps/ structure",
+        "CLAUDE.md: 'Turborepo for monorepo management with coordinated releases via changesets'",
+        "Section 13: 'Why monorepo? A monorepo (using Turborepo) ensures all packages stay in sync'"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "TypeScript",
+      "category": "frontend-web",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "ShakeNbake-PRD.md Section 4: 'interface BugReport' and core type definitions",
+        "Section 6: 'interface ContextCollector' examples show TypeScript",
+        "Package names and code examples throughout PRD use .ts and .tsx files"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "GraphQL",
+      "category": "backend",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: packages/linear uses 'Linear GraphQL adapter'",
+        "ShakeNbake-PRD.md Section 7: 'Linear adapter ... uses Linear's GraphQL API'",
+        "Section 7: References 'graphql.ts' for 'issueCreate + fileUpload mutations'"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Clerk",
+      "category": "auth",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'Clerk (auth + multi-tenancy)'",
+        "ShakeNbake-PRD.md Section 8: 'Authentication: Clerk (multi-tenant with organizations)'",
+        "Cloud tech stack lists '@clerk/nextjs'"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-auth-agent",
+      "specialistAgentAvailable": false
+    },
+    {
+      "name": "Vercel",
+      "category": "deploy",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'ShakeNbake Cloud — Next.js on Vercel'",
+        "ShakeNbake-PRD.md Section 8: 'Hosting: Vercel'",
+        "Cloud tech stack lists 'Vercel Blob for file storage'",
+        "Cloud tech stack references 'Vercel serverless functions with async processing'"
+      ],
+      "recommendedSpecialistAgent": "whycode:deploy-vercel-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Postgres",
+      "category": "backend",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'Postgres via Neon/Supabase with Prisma or Drizzle'",
+        "ShakeNbake-PRD.md Section 8: 'Database: Postgres (via Neon or Supabase) with Prisma or Drizzle ORM'"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Prisma",
+      "category": "backend",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'Prisma or Drizzle ORM'",
+        "ShakeNbake-PRD.md Section 8: 'with Prisma or Drizzle ORM'",
+        "Appendix B: cloud dependencies list 'prisma'"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Stripe",
+      "category": "integration",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'Stripe for billing ($10/mo per workspace)'",
+        "ShakeNbake-PRD.md Section 8: 'Stripe for billing'",
+        "Section 0.2: '- [ ] Stripe billing integration ($10/mo per workspace)'",
+        "Appendix B lists 'stripe' dependency"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "OpenAI Whisper",
+      "category": "integration",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'OpenAI Whisper for audio transcription'",
+        "ShakeNbake-PRD.md Section 8: 'Audio Transcription: OpenAI Whisper API'",
+        "Section 8.4: 'Transcription: Whisper API processes the audio (typical latency: 2–5 seconds for 60s audio)'",
+        "Appendix B: '@shakenbake/cloud' lists 'openai' dependency"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Shopify React Native Skia",
+      "category": "frontend-native",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: '@shopify/react-native-skia for React Native annotation — 60fps GPU-accelerated drawing'",
+        "ShakeNbake-PRD.md Section 5: 'Built with @shopify/react-native-skia for performant 60fps drawing'",
+        "Section 13: 'Why Skia for React Native annotation (not SVG)? ... Skia is the same engine used by Chrome and Android for rendering'",
+        "Appendix B lists '@shopify/react-native-skia' dependency"
+      ],
+      "recommendedSpecialistAgent": "whycode:frontend-native-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "html2canvas",
+      "category": "frontend-web",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'html2canvas for web screenshots — no permission dialog, captures page content only'",
+        "ShakeNbake-PRD.md Section 6: 'Uses html2canvas to capture the current viewport'",
+        "Section 13: 'Why html2canvas for web (not native browser APIs)? ... html2canvas captures just the page content, works without permission dialogs'",
+        "Appendix B lists 'html2canvas' dependency"
+      ],
+      "recommendedSpecialistAgent": "whycode:frontend-web-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "MediaRecorder API",
+      "category": "frontend-web",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "ShakeNbake-PRD.md Section 6: 'Uses the browser MediaRecorder API'",
+        "Section 6: 'Output format: WebM (Opus codec). Requires user permission for microphone access'"
+      ],
+      "recommendedSpecialistAgent": "whycode:frontend-web-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Linear API",
+      "category": "integration",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-20T16:00:00Z",
+      "evidence": [
+        "CLAUDE.md: 'Linear (issueCreate + fileUpload)'",
+        "ShakeNbake-PRD.md Section 7: 'uses Linear's GraphQL API to create issues with attached screenshots'",
+        "Section 7: 'issueCreate mutation' and 'fileUpload mutation'",
+        "Appendix A: Competitive landscape lists 'Linear integration'"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "runId": "2026-02-20T13-45-06Z",
+  "startedAt": "2026-02-20T13:45:06Z",
+  "version": "3.0.0",
+  "flags": [],
+  "name": "ShakeNbake MVP Build",
+  "completionMode": "strict",
+  "runType": "new",
+  "parentRunId": null
+}

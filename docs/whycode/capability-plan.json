@@ -1,0 +1,78 @@
+{
+  "status": "gaps_found",
+  "detectedStack": [
+    "typescript",
+    "react",
+    "react-native",
+    "expo",
+    "nextjs",
+    "turborepo",
+    "graphql",
+    "clerk",
+    "vercel",
+    "postgres",
+    "prisma",
+    "stripe",
+    "openai-whisper",
+    "skia",
+    "html2canvas",
+    "media-recorder",
+    "jest",
+    "lint"
+  ],
+  "convexContext": {
+    "mode": "not-applicable",
+    "evidence": [
+      "No convex dependency detected in project",
+      "No convex/ folder referenced in architecture",
+      "No .env.local with CONVEX_DEPLOYMENT marker"
+    ]
+  },
+  "deploymentContext": {
+    "mode": "vercel-cli",
+    "vercelCliAvailable": false,
+    "githubIntegrationDetected": false,
+    "evidence": [
+      "Cloud app (apps/cloud) targets Vercel deployment",
+      "Architecture specifies 'apps/cloud — Next.js on Vercel'",
+      "No .github/workflows detected for GitHub auto-deploy",
+      "No .vercel/ or vercel.json found in pre-code phase",
+      "Web app assumes Vercel deployment as reference platform"
+    ]
+  },
+  "routingPlan": [
+    {
+      "surface": "frontend-web",
+      "recommendedAgent": "whycode:frontend-web-agent",
+      "reason": "Next.js/React web SDK (@shakenbake/web) with html2canvas, Canvas annotation, keyboard triggers, and React Provider pattern. Web package is core to MVP."
+    },
+    {
+      "surface": "frontend-native",
+      "recommendedAgent": "whycode:frontend-native-agent",
+      "reason": "Expo/React Native SDK (@shakenbake/react-native) with shake triggers, react-native-view-shot, @shopify/react-native-skia annotation, and expo-av audio. Development builds required."
+    },
+    {
+      "surface": "backend",
+      "recommendedAgent": "whycode:backend-agent",
+      "reason": "Core plugin system (@shakenbake/core) provides shared types, plugin interfaces, and report builder. Linear GraphQL adapter (@shakenbake/linear) handles issue creation. General backend agent recommended for non-specialized work."
+    },
+    {
+      "surface": "backend",
+      "recommendedAgent": "whycode:backend-nextjs-agent",
+      "reason": "ShakeNbake Cloud (apps/cloud) is Next.js App Router with server-side API routes for report ingestion, Whisper transcription, and issue forwarding. Clerk authentication, Postgres/Prisma ORM, Vercel Blob storage, Stripe billing."
+    },
+    {
+      "surface": "deploy",
+      "recommendedAgent": "whycode:deploy-vercel-agent",
+      "reason": "Cloud app targets Vercel as reference deployment platform. Multi-package monorepo publish strategy will need Vercel deployment awareness for serverless functions and Blob storage."
+    },
+    {
+      "surface": "shared",
+      "recommendedAgent": "whycode:backend-agent",
+      "reason": "Turborepo monorepo coordination, TypeScript base config, shared types (@shakenbake/core), and changesets release workflow. Generic backend agent suitable for build tooling."
+    }
+  ],
+  "gaps": [],
+  "recommendedAction": "proceed",
+  "notes": "ShakeNbake is a pre-code cross-platform bug reporting SDK in specification phase. No mandatory specialist agent gaps detected. Detected specialist agents: frontend-web (Next.js), frontend-native (Expo/React Native), backend (TypeScript/GraphQL), backend-nextjs (Cloud app), deploy-vercel (Vercel deployment). Convex is not applicable (no cloud backend framework). No GitHub integration markers detected; Vercel is the reference deployment platform but CLI availability not confirmed in pre-code phase. Monorepo structure (Turborepo) will coordinate releases across 7 packages: core, react-native, web, linear, cloud-client, cloud app, and examples. Key architectural decisions: Skia for RN annotation (60fps GPU drawing), html2canvas for web screenshots, server-side proxy pattern for Linear API key security, Expo development builds required (no Expo Go). Routing prefers specialists when available: separate agents for frontend-web and frontend-native given the two distinct SDKs and platforms. Backend work is consolidated under a single backend agent (core types, plugin system, Linear adapter). Cloud deployment is specialized (Next.js with Vercel serverless). Recommend specialist agents for frontend-web, frontend-native, backend, backend-nextjs, and deploy-vercel surfaces."
+}
