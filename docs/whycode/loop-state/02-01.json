@@ -1,0 +1,18 @@
+{
+  "planId": "02-01",
+  "planName": "Linear Adapter - Issue Creation",
+  "agentType": "whycode:backend-agent",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "iterating",
+  "currentRunId": "02-01-1-2026-02-20T18-51-00Z",
+  "tasks": [
+    { "id": "task-007", "name": "Create LinearAdapter class", "status": "pending", "lastVerified": null },
+    { "id": "task-008", "name": "Implement issueCreate via GraphQL", "status": "pending", "lastVerified": null },
+    { "id": "task-009", "name": "Implement testConnection and unit tests", "status": "pending", "lastVerified": null }
+  ],
+  "iterations": [
+    { "iteration": 1, "startedAt": "2026-02-20T18:51:00Z", "outcome": null }
+  ],
+  "lastVerificationFailure": null
+}

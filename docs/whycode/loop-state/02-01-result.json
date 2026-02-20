@@ -1,0 +1,36 @@
+{
+  "runId": "02-01-1-2026-02-20T18-51-00Z",
+  "planId": "02-01",
+  "iteration": 1,
+  "outcome": "PLAN_COMPLETE",
+  "tasksCompleted": ["task-007", "task-008", "task-009"],
+  "tasksPending": [],
+  "taskStatus": [
+    { "id": "task-007", "status": "done", "verifiedBy": "tsc --noEmit", "verifiedAt": "2026-02-20T19:01:00Z" },
+    { "id": "task-008", "status": "done", "verifiedBy": "tsc --noEmit", "verifiedAt": "2026-02-20T19:01:00Z" },
+    { "id": "task-009", "status": "done", "verifiedBy": "vitest run", "verifiedAt": "2026-02-20T19:01:05Z" }
+  ],
+  "selfValidation": {
+    "typecheck": { "status": "pass", "exitCode": 0 },
+    "lint": { "status": "pass", "exitCode": 0 },
+    "test": { "status": "pass", "passed": 109, "failed": 0 },
+    "build": { "status": "pass", "exitCode": 0 },
+    "smoke": { "status": "pass", "appStarted": true }
+  },
+  "filesChanged": {
+    "created": [
+      "packages/linear/src/types.ts",
+      "packages/linear/src/graphql.ts",
+      "packages/linear/src/markdown.ts",
+      "packages/linear/src/adapter.ts",
+      "packages/linear/src/__tests__/adapter.test.ts",
+      "packages/linear/src/__tests__/graphql.test.ts",
+      "packages/linear/src/__tests__/markdown.test.ts"
+    ],
+    "modified": [
+      "packages/linear/src/index.ts",
+      "docs/whycode/audit/log.md"
+    ]
+  },
+  "notes": "Implemented @shakenbake/linear adapter: LinearAdapter class implementing DestinationAdapter, linearFetch GraphQL wrapper (no Bearer prefix), markdown description builder with collapsible device context, two-step file upload, severity-to-priority mapping, graceful screenshot fallback. 57 tests covering all paths. 109 total tests across core+linear. All verifications pass."
+}
