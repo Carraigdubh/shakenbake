@@ -488,16 +488,11 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
 
   // Fallback if modules not loaded yet
   if (loadError) {
-    // Render plain React element since react-native may not be available
-    return React.createElement(
-      'div',
-      { style: { padding: 20, backgroundColor: '#1a1a1a', flex: 1 } },
-      React.createElement(
-        'p',
-        { style: { color: '#ff6b6b', fontSize: 16 } },
-        loadError,
-      ),
-    );
+    // Cannot render React Native components since the module failed to load.
+    // Call onCancel to dismiss and let the consumer handle the error.
+    // eslint-disable-next-line no-console
+    console.error('[ShakeNbake]', loadError);
+    return null;
   }
 
   if (!skia || !rnMod) {
@@ -513,7 +508,6 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
     Circle: SkiaCircleComponent,
     Line: SkiaLineComponent,
     Skia: SkiaStatic,
-    useCanvasRef,
   } = skia;
 
   const { View } = rnMod;
@@ -634,6 +628,9 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
       React.createElement(
         Canvas,
         {
+          ref: (ref: SkiaCanvasRef | null) => {
+            canvasRefHolder.current.current = ref;
+          },
           style: {
             width: dimensions.width,
             height: dimensions.height,

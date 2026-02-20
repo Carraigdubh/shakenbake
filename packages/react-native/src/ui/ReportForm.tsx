@@ -289,15 +289,10 @@ export function ReportForm(props: ReportFormProps): React.ReactNode {
   // ---- Render: loading / error states ----
 
   if (loadError) {
-    return React.createElement(
-      'div',
-      { style: { padding: 20, backgroundColor: '#1a1a1a', flex: 1 } },
-      React.createElement(
-        'p',
-        { style: { color: '#ff6b6b', fontSize: 16 } },
-        loadError,
-      ),
-    );
+    // Cannot render React Native components since the module failed to load.
+    // eslint-disable-next-line no-console
+    console.error('[ShakeNbake]', loadError);
+    return null;
   }
 
   if (!rn) return null;

@@ -120,8 +120,10 @@ function deepMerge<T extends Record<string, unknown>>(
   target: T,
   source: Partial<T>,
 ): T {
+  const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
   const output = { ...target } as Record<string, unknown>;
   for (const key of Object.keys(source)) {
+    if (DANGEROUS_KEYS.has(key)) continue;
     const srcVal = (source as Record<string, unknown>)[key];
     const tgtVal = output[key];
     if (

@@ -277,7 +277,7 @@ describe('ReportBuilder', () => {
   });
 
   describe('submit()', () => {
-    it('uploads image and creates issue', async () => {
+    it('delegates to adapter.createIssue', async () => {
       const registry = new PluginRegistry();
       const adapter = makeAdapter();
       const builder = new ReportBuilder(registry, adapter);
@@ -298,29 +298,18 @@ describe('ReportBuilder', () => {
       };
 
       const result = await builder.submit(report);
-      expect(adapter.uploadImage).toHaveBeenCalled();
       expect(adapter.createIssue).toHaveBeenCalledWith(report);
       expect(result.success).toBe(true);
       expect(result.url).toBe('https://linear.app/1');
     });
 
-    it('calls uploadImage before createIssue', async () => {
-      const callOrder: string[] = [];
+    it('does not call uploadImage separately (adapter handles uploads internally)', async () => {
       const registry = new PluginRegistry();
-      const adapter = makeAdapter({
-        uploadImage: vi.fn().mockImplementation(async () => {
-          callOrder.push('uploadImage');
-          return 'url';
-        }),
-        createIssue: vi.fn().mockImplementation(async () => {
-          callOrder.push('createIssue');
-          return { url: 'u', id: 'i', success: true };
-        }),
-      });
+      const adapter = makeAdapter();
       const builder = new ReportBuilder(registry, adapter);
 
       const report: BugReport = {
-        id: 'order-test',
+        id: 'no-upload-test',
         timestamp: new Date().toISOString(),
         title: 'Test',
         description: 'Desc',
@@ -335,13 +324,15 @@ describe('ReportBuilder', () => {
       };
 
       await builder.submit(report);
-      expect(callOrder).toEqual(['uploadImage', 'createIssue']);
+      // uploadImage should NOT be called by submit — the adapter's
+      // createIssue handles uploads internally
+      expect(adapter.uploadImage).not.toHaveBeenCalled();
     });
 
     it('wraps non-ShakeNbakeError adapter errors as ShakeNbakeError', async () => {
       const registry = new PluginRegistry();
       const adapter = makeAdapter({
-        uploadImage: vi.fn().mockRejectedValue(new Error('network timeout')),
+        createIssue: vi.fn().mockRejectedValue(new Error('network timeout')),
       });
       const builder = new ReportBuilder(registry, adapter);
 
@@ -376,7 +367,7 @@ describe('ReportBuilder', () => {
       const original = new ShakeNbakeError('auth bad', 'AUTH_FAILED');
       const registry = new PluginRegistry();
       const adapter = makeAdapter({
-        uploadImage: vi.fn().mockRejectedValue(original),
+        createIssue: vi.fn().mockRejectedValue(original),
       });
       const builder = new ReportBuilder(registry, adapter);
 
@@ -439,7 +430,7 @@ describe('ReportBuilder', () => {
     it('handles non-Error thrown values in submit', async () => {
       const registry = new PluginRegistry();
       const adapter = makeAdapter({
-        uploadImage: vi.fn().mockRejectedValue('string error'),
+        createIssue: vi.fn().mockRejectedValue('string error'),
       });
       const builder = new ReportBuilder(registry, adapter);
 

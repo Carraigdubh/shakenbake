@@ -292,12 +292,8 @@ export function ShakeNbakeProvider({
           customMetadata: config.customMetadata?.(),
         };
 
-        // Upload image.
-        const imageBlob = base64ToBlob(input.annotatedScreenshot);
-        const filename = `shakenbake-${report.id}.png`;
-        await config.destination.uploadImage(imageBlob, filename);
-
-        // Create issue.
+        // Create issue. The DestinationAdapter.createIssue() handles
+        // screenshot uploads internally (e.g., LinearAdapter uploads then creates).
         const result = await config.destination.createIssue(report);
         setSubmitResult(result);
         setStep('success');
@@ -579,24 +575,3 @@ function generateId(): string {
   }
 }
 
-function base64ToBlob(base64: string): Blob {
-  try {
-    // Strip data URL prefix if present.
-    const parts = base64.split(',');
-    const raw = parts.length > 1 ? parts[1]! : parts[0]!;
-    const mime =
-      parts.length > 1
-        ? (parts[0]!.match(/:(.*?);/)?.[1] ?? 'image/png')
-        : 'image/png';
-
-    const byteChars = atob(raw);
-    const byteNumbers = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) {
-      byteNumbers[i] = byteChars.charCodeAt(i);
-    }
-    return new Blob([byteNumbers], { type: mime });
-  } catch {
-    // Fallback: return a tiny blob so the adapter at least receives something.
-    return new Blob([base64], { type: 'image/png' });
-  }
-}

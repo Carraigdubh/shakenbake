@@ -2,8 +2,6 @@
 // @shakenbake/core — ReportBuilder
 // ---------------------------------------------------------------------------
 
-import { randomUUID } from 'node:crypto';
-
 import type {
   BugReport,
   CaptureResult,
@@ -108,7 +106,7 @@ export class ReportBuilder {
 
     let id: string;
     try {
-      id = randomUUID();
+      id = globalThis.crypto.randomUUID();
     } catch {
       // Fallback for runtimes without crypto.randomUUID
       id = fallbackUUID();
@@ -147,11 +145,10 @@ export class ReportBuilder {
    */
   async submit(report: BugReport): Promise<SubmitResult> {
     try {
-      // Convert base64 screenshot to a Buffer for upload
-      const imageBuffer = Buffer.from(report.screenshot.annotated, 'base64');
-      const filename = `shakenbake-${report.id}.png`;
-
-      await this.adapter.uploadImage(imageBuffer, filename);
+      // Note: We do NOT call uploadImage here separately.
+      // The DestinationAdapter.createIssue() is responsible for handling
+      // screenshot uploads internally (e.g., LinearAdapter uploads then creates the issue).
+      // This avoids double-uploading when adapters handle uploads in createIssue.
       return await this.adapter.createIssue(report);
     } catch (error: unknown) {
       if (error instanceof ShakeNbakeError) {
