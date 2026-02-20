@@ -1,0 +1,33 @@
+{
+  "runId": "02-02-1-2026-02-20T19-01-00Z",
+  "planId": "02-02",
+  "iteration": 1,
+  "outcome": "PLAN_COMPLETE",
+  "tasksCompleted": ["task-010", "task-011", "task-012"],
+  "tasksPending": [],
+  "taskStatus": [
+    { "id": "task-010", "status": "done", "verifiedBy": "cd packages/linear && npx tsc --noEmit", "verifiedAt": "2026-02-20T19:19:00Z" },
+    { "id": "task-011", "status": "done", "verifiedBy": "cd packages/linear && npx tsc --noEmit", "verifiedAt": "2026-02-20T19:19:00Z" },
+    { "id": "task-012", "status": "done", "verifiedBy": "cd packages/linear && npx vitest run", "verifiedAt": "2026-02-20T19:19:00Z" }
+  ],
+  "selfValidation": {
+    "typecheck": { "status": "pass", "exitCode": 0 },
+    "lint": { "status": "pass", "exitCode": 0 },
+    "test": { "status": "pass", "passed": 144, "failed": 0 },
+    "build": { "status": "pass", "exitCode": 0 },
+    "smoke": { "status": "pass", "allMethodsFunctions": true }
+  },
+  "filesChanged": {
+    "created": [
+      "packages/linear/src/__tests__/upload.test.ts"
+    ],
+    "modified": [
+      "packages/linear/src/graphql.ts",
+      "packages/linear/src/adapter.ts",
+      "packages/linear/src/index.ts",
+      "packages/linear/src/__tests__/adapter.test.ts",
+      "packages/linear/src/__tests__/graphql.test.ts"
+    ]
+  },
+  "notes": "All 3 tasks complete. FILE_UPLOAD_MUTATION updated with success and headers fields. requestUploadUrl helper function added to graphql.ts. uploadImage refactored to use requestUploadUrl and apply response headers. detectContentType static method added for 8 content types. GraphQL RATELIMITED detection added to linearFetch. 35 new tests added (30 in upload.test.ts, 5 in graphql.test.ts). Linear package: 92 tests. Total: 144 tests. All verifications green."
+}

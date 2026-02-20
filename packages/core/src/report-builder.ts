@@ -49,7 +49,7 @@ export class ReportBuilder {
 
   /**
    * Captures a screenshot using the first registered CapturePlugin.
-   * Throws if no CapturePlugin is registered.
+   * Throws ShakeNbakeError if no CapturePlugin is registered.
    */
   async startCapture(): Promise<CaptureResult> {
     const capturePlugin = this.registry.getCapture();
@@ -65,6 +65,9 @@ export class ReportBuilder {
   /**
    * Merges context from all registered ContextCollectors into a full
    * DeviceContext (using empty defaults for missing sections).
+   *
+   * Each collector is wrapped in try/catch in the registry, so a single
+   * failing collector does not prevent the others from contributing.
    */
   async collectContext(): Promise<DeviceContext> {
     const partial = await this.registry.collectContext();
@@ -86,7 +89,8 @@ export class ReportBuilder {
 
   /**
    * Builds a full BugReport from user-provided input and collected context.
-   * Generates a UUID and ISO 8601 timestamp.
+   * Generates a UUID via crypto.randomUUID (with Math.random fallback for
+   * older runtimes) and an ISO 8601 timestamp.
    */
   build(input: ReportInput, context: DeviceContext): BugReport {
     if (!input.title.trim()) {
@@ -102,8 +106,16 @@ export class ReportBuilder {
       );
     }
 
+    let id: string;
+    try {
+      id = randomUUID();
+    } catch {
+      // Fallback for runtimes without crypto.randomUUID
+      id = fallbackUUID();
+    }
+
     const report: BugReport = {
-      id: randomUUID(),
+      id,
       timestamp: new Date().toISOString(),
       title: input.title,
       description: input.description,
@@ -131,13 +143,40 @@ export class ReportBuilder {
   /**
    * Submits a BugReport via the configured DestinationAdapter.
    * Uploads the screenshot first, then creates the issue.
+   * Wraps any adapter errors as ShakeNbakeError.
    */
   async submit(report: BugReport): Promise<SubmitResult> {
-    // Convert base64 screenshot to a Buffer for upload
-    const imageBuffer = Buffer.from(report.screenshot.annotated, 'base64');
-    const filename = `shakenbake-${report.id}.png`;
+    try {
+      // Convert base64 screenshot to a Buffer for upload
+      const imageBuffer = Buffer.from(report.screenshot.annotated, 'base64');
+      const filename = `shakenbake-${report.id}.png`;
 
-    await this.adapter.uploadImage(imageBuffer, filename);
-    return this.adapter.createIssue(report);
+      await this.adapter.uploadImage(imageBuffer, filename);
+      return await this.adapter.createIssue(report);
+    } catch (error: unknown) {
+      if (error instanceof ShakeNbakeError) {
+        throw error;
+      }
+      throw new ShakeNbakeError(
+        error instanceof Error ? error.message : 'Failed to submit report',
+        'UPLOAD_FAILED',
+        { originalError: error },
+      );
+    }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Fallback UUID generator for runtimes without crypto.randomUUID
+// ---------------------------------------------------------------------------
+
+function fallbackUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+    /[xy]/g,
+    (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    },
+  );
 }

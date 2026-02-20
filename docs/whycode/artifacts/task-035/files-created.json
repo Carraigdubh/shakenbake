@@ -1,0 +1,5 @@
+{
+  "created": ["packages/core/src/__tests__/mock-adapter.test.ts"],
+  "modified": ["packages/core/src/index.ts"],
+  "deleted": []
+}

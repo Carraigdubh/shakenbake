@@ -45,6 +45,14 @@ function makeCollector(
   };
 }
 
+function makeFailingCollector(name: string): ContextCollector {
+  return {
+    name,
+    platform: 'universal',
+    collect: vi.fn().mockRejectedValue(new Error('collector failed')),
+  };
+}
+
 describe('PluginRegistry', () => {
   // ---- Triggers ----
   describe('triggers', () => {
@@ -81,6 +89,41 @@ describe('PluginRegistry', () => {
       expect(t1.deactivate).toHaveBeenCalled();
       expect(t2.deactivate).toHaveBeenCalled();
     });
+
+    it('returns empty array when no triggers registered', () => {
+      const registry = new PluginRegistry();
+      expect(registry.getTriggers()).toEqual([]);
+    });
+
+    it('overwrites trigger with the same name', () => {
+      const registry = new PluginRegistry();
+      const t1 = makeTrigger('shake');
+      const t2 = makeTrigger('shake');
+      registry.registerTrigger(t1);
+      registry.registerTrigger(t2);
+      expect(registry.getTriggers()).toHaveLength(1);
+      // The second registration should replace the first
+      expect(registry.getTriggers()[0]).toBe(t2);
+    });
+
+    it('unregistering a non-existent trigger is a no-op', () => {
+      const registry = new PluginRegistry();
+      registry.registerTrigger(makeTrigger('shake'));
+      registry.unregisterTrigger('nonexistent');
+      expect(registry.getTriggers()).toHaveLength(1);
+    });
+
+    it('activateTriggers is a no-op on empty registry', () => {
+      const registry = new PluginRegistry();
+      // Should not throw
+      registry.activateTriggers(vi.fn());
+    });
+
+    it('deactivateTriggers is a no-op on empty registry', () => {
+      const registry = new PluginRegistry();
+      // Should not throw
+      registry.deactivateTriggers();
+    });
   });
 
   // ---- Capture ----
@@ -102,6 +145,16 @@ describe('PluginRegistry', () => {
       registry.registerCapture(makeCapture('html2canvas'));
       registry.unregisterCapture('html2canvas');
       expect(registry.getCapture()).toBeUndefined();
+    });
+
+    it('overwrites capture plugin with the same name', () => {
+      const registry = new PluginRegistry();
+      const c1 = makeCapture('html2canvas');
+      const c2 = makeCapture('html2canvas');
+      registry.registerCapture(c1);
+      registry.registerCapture(c2);
+      // Map overwrites, so only one entry
+      expect(registry.getCapture()).toBe(c2);
     });
   });
 
@@ -149,6 +202,62 @@ describe('PluginRegistry', () => {
       const registry = new PluginRegistry();
       const ctx = await registry.collectContext();
       expect(ctx).toEqual({});
+    });
+
+    it('overwrites collector with the same name', () => {
+      const registry = new PluginRegistry();
+      const c1 = makeCollector('device', { device: { manufacturer: 'Apple' } });
+      const c2 = makeCollector('device', { device: { manufacturer: 'Samsung' } });
+      registry.registerCollector(c1);
+      registry.registerCollector(c2);
+      expect(registry.getCollectors()).toHaveLength(1);
+      expect(registry.getCollectors()[0]).toBe(c2);
+    });
+
+    it('handles a failing collector gracefully without breaking others', async () => {
+      const registry = new PluginRegistry();
+      registry.registerCollector(
+        makeCollector('platform', {
+          platform: { os: 'ios' },
+        }),
+      );
+      registry.registerCollector(makeFailingCollector('broken'));
+      registry.registerCollector(
+        makeCollector('network', {
+          network: { isConnected: true },
+        }),
+      );
+
+      const ctx = await registry.collectContext();
+      // The failing collector should be skipped
+      expect(ctx.platform?.os).toBe('ios');
+      expect(ctx.network?.isConnected).toBe(true);
+    });
+  });
+
+  // ---- Clear ----
+  describe('clear()', () => {
+    it('removes all triggers, capture plugins, and collectors', () => {
+      const registry = new PluginRegistry();
+      registry.registerTrigger(makeTrigger('shake'));
+      registry.registerTrigger(makeTrigger('keyboard'));
+      registry.registerCapture(makeCapture('html2canvas'));
+      registry.registerCollector(
+        makeCollector('device', { device: {} }),
+      );
+
+      registry.clear();
+
+      expect(registry.getTriggers()).toHaveLength(0);
+      expect(registry.getCapture()).toBeUndefined();
+      expect(registry.getCollectors()).toHaveLength(0);
+    });
+
+    it('is safe to call clear() on an empty registry', () => {
+      const registry = new PluginRegistry();
+      // Should not throw
+      registry.clear();
+      expect(registry.getTriggers()).toHaveLength(0);
     });
   });
 });

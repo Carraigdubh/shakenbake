@@ -1,0 +1,18 @@
+{
+  "planId": "05-01",
+  "planName": "Example Apps",
+  "agentType": "whycode:frontend-web-agent",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "complete",
+  "currentRunId": "05-01-1-2026-02-20T20-11-00Z",
+  "tasks": [
+    { "id": "task-031", "name": "Create Next.js example app", "status": "done", "lastVerified": "2026-02-20T20:30:00Z" },
+    { "id": "task-032", "name": "Create Expo example app", "status": "done", "lastVerified": "2026-02-20T20:30:00Z" },
+    { "id": "task-033", "name": "Add README with setup instructions", "status": "done", "lastVerified": "2026-02-20T20:30:00Z" }
+  ],
+  "iterations": [
+    { "iteration": 1, "startedAt": "2026-02-20T20:11:00Z", "outcome": "PLAN_COMPLETE" }
+  ],
+  "lastVerificationFailure": null
+}

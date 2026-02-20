@@ -1,0 +1,674 @@
+// ---------------------------------------------------------------------------
+// @shakenbake/react-native — DrawingCanvas (Skia annotation overlay)
+//
+// A full-screen annotation component that renders a captured screenshot as the
+// background and lets the user draw freehand paths, rectangles, arrows, and
+// circles on top of it.  Uses @shopify/react-native-skia for GPU-accelerated
+// 60fps drawing.
+//
+// Since @shopify/react-native-skia is a **peer dependency**, the component
+// handles the case where Skia is not installed: it renders a helpful error
+// message rather than crashing.
+// ---------------------------------------------------------------------------
+
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
+
+import type { DrawingCanvasProps, DrawingOperation, Point } from './types.js';
+import { DRAWING_COLORS, STROKE_WIDTHS } from './types.js';
+import type { DrawingColor, StrokeSize, DrawingTool } from './types.js';
+import {
+  useDrawingOperations,
+} from './useDrawingOperations.js';
+
+// ---------------------------------------------------------------------------
+// Skia module types — kept local so the file compiles without Skia installed.
+// The actual module is loaded dynamically at runtime.
+// ---------------------------------------------------------------------------
+
+/** Minimal Skia module shape we need at runtime. */
+interface SkiaModule {
+  Canvas: React.ComponentType<Record<string, unknown>>;
+  Image: React.ComponentType<Record<string, unknown>>;
+  Path: React.ComponentType<Record<string, unknown>>;
+  Rect: React.ComponentType<Record<string, unknown>>;
+  Circle: React.ComponentType<Record<string, unknown>>;
+  Line: React.ComponentType<Record<string, unknown>>;
+  Skia: {
+    Path: { Make(): SkiaPath };
+    Data: { fromBase64(b64: string): SkiaData };
+  };
+  makeImageFromEncoded: (data: SkiaData) => SkiaImage | null;
+  useCanvasRef: () => { current: SkiaCanvasRef | null };
+}
+
+interface SkiaPath {
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  close(): void;
+  reset(): void;
+  copy(): SkiaPath;
+}
+
+interface SkiaData {
+  dispose(): void;
+}
+
+interface SkiaImage {
+  width(): number;
+  height(): number;
+  encodeToBase64(format?: string, quality?: number): string;
+}
+
+interface SkiaCanvasRef {
+  makeImageSnapshot(): SkiaImage;
+}
+
+// ---------------------------------------------------------------------------
+// React Native component types (peer dep — loaded dynamically)
+// ---------------------------------------------------------------------------
+
+interface RNModule {
+  View: React.ComponentType<Record<string, unknown>>;
+  Text: React.ComponentType<Record<string, unknown>>;
+  TouchableOpacity: React.ComponentType<Record<string, unknown>>;
+  StyleSheet: {
+    create<T extends Record<string, Record<string, unknown>>>(styles: T): T;
+  };
+  PanResponder: {
+    create(config: Record<string, unknown>): {
+      panHandlers: Record<string, unknown>;
+    };
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Arrow head helper
+// ---------------------------------------------------------------------------
+
+function buildArrowHeadPath(
+  skia: SkiaModule['Skia'],
+  from: Point,
+  to: Point,
+  headLength: number,
+): SkiaPath {
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const headAngle = Math.PI / 6; // 30 degrees
+
+  const p1x = to.x - headLength * Math.cos(angle - headAngle);
+  const p1y = to.y - headLength * Math.sin(angle - headAngle);
+  const p2x = to.x - headLength * Math.cos(angle + headAngle);
+  const p2y = to.y - headLength * Math.sin(angle + headAngle);
+
+  const path = skia.Path.Make();
+  path.moveTo(to.x, to.y);
+  path.lineTo(p1x, p1y);
+  path.moveTo(to.x, to.y);
+  path.lineTo(p2x, p2y);
+  return path;
+}
+
+// ---------------------------------------------------------------------------
+// Build an SkPath from freehand points
+// ---------------------------------------------------------------------------
+
+function buildFreehandPath(
+  skia: SkiaModule['Skia'],
+  points: Point[],
+): SkiaPath {
+  const path = skia.Path.Make();
+  if (points.length === 0) return path;
+  const first = points[0]!;
+  path.moveTo(first.x, first.y);
+  for (let i = 1; i < points.length; i++) {
+    const pt = points[i]!;
+    path.lineTo(pt.x, pt.y);
+  }
+  return path;
+}
+
+// ---------------------------------------------------------------------------
+// Toolbar sub-component (pure React Native — no Skia)
+// ---------------------------------------------------------------------------
+
+interface ToolbarProps {
+  rn: RNModule;
+  tool: DrawingTool;
+  color: DrawingColor;
+  strokeSize: StrokeSize;
+  canUndo: boolean;
+  canRedo: boolean;
+  onSetTool: (tool: DrawingTool) => void;
+  onSetColor: (color: DrawingColor) => void;
+  onSetStrokeSize: (size: StrokeSize) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onDone: () => void;
+  onCancel: () => void;
+}
+
+const TOOL_LABELS: Record<DrawingTool, string> = {
+  pen: 'Pen',
+  rectangle: 'Rect',
+  arrow: 'Arrow',
+  circle: 'Circle',
+  eraser: 'Eraser',
+};
+
+const TOOLS: DrawingTool[] = ['pen', 'rectangle', 'arrow', 'circle', 'eraser'];
+const SIZES: StrokeSize[] = ['thin', 'medium', 'thick'];
+
+function Toolbar({
+  rn,
+  tool,
+  color,
+  strokeSize,
+  canUndo,
+  canRedo,
+  onSetTool,
+  onSetColor,
+  onSetStrokeSize,
+  onUndo,
+  onRedo,
+  onDone,
+  onCancel,
+}: ToolbarProps): React.ReactNode {
+  const { View, Text, TouchableOpacity, StyleSheet } = rn;
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          position: 'absolute' as const,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          paddingBottom: 34, // safe area
+          paddingTop: 8,
+          paddingHorizontal: 12,
+        },
+        row: {
+          flexDirection: 'row' as const,
+          alignItems: 'center' as const,
+          justifyContent: 'center' as const,
+          marginVertical: 4,
+          flexWrap: 'wrap' as const,
+          gap: 6,
+        },
+        button: {
+          paddingHorizontal: 10,
+          paddingVertical: 6,
+          borderRadius: 6,
+          backgroundColor: 'rgba(255,255,255,0.15)',
+          marginHorizontal: 2,
+        },
+        buttonActive: {
+          paddingHorizontal: 10,
+          paddingVertical: 6,
+          borderRadius: 6,
+          backgroundColor: 'rgba(255,255,255,0.4)',
+          marginHorizontal: 2,
+        },
+        buttonDisabled: {
+          paddingHorizontal: 10,
+          paddingVertical: 6,
+          borderRadius: 6,
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          marginHorizontal: 2,
+          opacity: 0.4,
+        },
+        buttonText: {
+          color: '#FFFFFF',
+          fontSize: 12,
+          fontWeight: '600' as const,
+        },
+        colorSwatch: {
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          marginHorizontal: 3,
+          borderWidth: 2,
+          borderColor: 'transparent',
+        },
+        colorSwatchActive: {
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          marginHorizontal: 3,
+          borderWidth: 2,
+          borderColor: '#FFFFFF',
+        },
+        actionRow: {
+          flexDirection: 'row' as const,
+          justifyContent: 'space-between' as const,
+          alignItems: 'center' as const,
+          marginTop: 4,
+          paddingHorizontal: 4,
+        },
+        cancelButton: {
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 6,
+          backgroundColor: 'rgba(255,60,60,0.3)',
+        },
+        doneButton: {
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 6,
+          backgroundColor: 'rgba(60,180,60,0.5)',
+        },
+      }),
+    [StyleSheet],
+  );
+
+  return React.createElement(
+    View,
+    { style: styles.container, pointerEvents: 'box-none' },
+    // Row 1: Tool selection
+    React.createElement(
+      View,
+      { style: styles.row },
+      ...TOOLS.map((t) =>
+        React.createElement(
+          TouchableOpacity,
+          {
+            key: t,
+            style: t === tool ? styles.buttonActive : styles.button,
+            onPress: () => onSetTool(t),
+          },
+          React.createElement(Text, { style: styles.buttonText }, TOOL_LABELS[t]),
+        ),
+      ),
+      // Undo / Redo
+      React.createElement(
+        TouchableOpacity,
+        {
+          key: 'undo',
+          style: canUndo ? styles.button : styles.buttonDisabled,
+          onPress: onUndo,
+          disabled: !canUndo,
+        },
+        React.createElement(Text, { style: styles.buttonText }, 'Undo'),
+      ),
+      React.createElement(
+        TouchableOpacity,
+        {
+          key: 'redo',
+          style: canRedo ? styles.button : styles.buttonDisabled,
+          onPress: onRedo,
+          disabled: !canRedo,
+        },
+        React.createElement(Text, { style: styles.buttonText }, 'Redo'),
+      ),
+    ),
+    // Row 2: Color palette
+    React.createElement(
+      View,
+      { style: styles.row },
+      ...DRAWING_COLORS.map((c) =>
+        React.createElement(TouchableOpacity, {
+          key: c,
+          style: {
+            ...(c === color ? styles.colorSwatchActive : styles.colorSwatch),
+            backgroundColor: c,
+          },
+          onPress: () => onSetColor(c),
+        }),
+      ),
+    ),
+    // Row 3: Stroke size
+    React.createElement(
+      View,
+      { style: styles.row },
+      ...SIZES.map((s) =>
+        React.createElement(
+          TouchableOpacity,
+          {
+            key: s,
+            style: s === strokeSize ? styles.buttonActive : styles.button,
+            onPress: () => onSetStrokeSize(s),
+          },
+          React.createElement(
+            Text,
+            { style: styles.buttonText },
+            `${s.charAt(0).toUpperCase()}${s.slice(1)} (${STROKE_WIDTHS[s]}px)`,
+          ),
+        ),
+      ),
+    ),
+    // Row 4: Cancel / Done
+    React.createElement(
+      View,
+      { style: styles.actionRow },
+      React.createElement(
+        TouchableOpacity,
+        { style: styles.cancelButton, onPress: onCancel },
+        React.createElement(Text, { style: styles.buttonText }, 'Cancel'),
+      ),
+      React.createElement(
+        TouchableOpacity,
+        { style: styles.doneButton, onPress: onDone },
+        React.createElement(Text, { style: styles.buttonText }, 'Done'),
+      ),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DrawingCanvas — Main exported component
+// ---------------------------------------------------------------------------
+
+/**
+ * Full-screen Skia annotation canvas.
+ *
+ * Renders the screenshot as background image, supports freehand pen drawing,
+ * rectangle, arrow, circle, and eraser tools with undo/redo.
+ *
+ * Requires `@shopify/react-native-skia` to be installed in the host app.
+ * If Skia is not available, a helpful fallback error message is shown.
+ */
+export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
+  const { screenshot, dimensions, onDone, onCancel } = props;
+
+  // ---- Module loading state ----
+  const [skia, setSkia] = useState<SkiaModule | null>(null);
+  const [rnMod, setRnMod] = useState<RNModule | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [backgroundImage, setBackgroundImage] = useState<SkiaImage | null>(
+    null,
+  );
+
+  // ---- Drawing state (pure logic) ----
+  const [drawState, drawActions] = useDrawingOperations();
+
+  // Canvas ref for snapshot export
+  const canvasRefHolder = useRef<{ current: SkiaCanvasRef | null }>({
+    current: null,
+  });
+
+  // ---- Load peer dependencies at mount ----
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadModules(): Promise<void> {
+      try {
+        const [skiaMod, rnModule] = await Promise.all([
+          import('@shopify/react-native-skia') as Promise<unknown>,
+          import('react-native') as Promise<unknown>,
+        ]);
+        if (cancelled) return;
+        setSkia(skiaMod as SkiaModule);
+        setRnMod(rnModule as RNModule);
+      } catch {
+        if (cancelled) return;
+        setLoadError(
+          '@shopify/react-native-skia is required for annotation but is not installed. ' +
+            'Install it with: npx expo install @shopify/react-native-skia',
+        );
+      }
+    }
+
+    void loadModules();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ---- Decode screenshot into Skia image ----
+  useEffect(() => {
+    if (!skia || !screenshot) return;
+    try {
+      const data = skia.Skia.Data.fromBase64(screenshot);
+      const img = skia.makeImageFromEncoded(data);
+      setBackgroundImage(img);
+    } catch {
+      // If decoding fails, we proceed without a background
+      setBackgroundImage(null);
+    }
+  }, [skia, screenshot]);
+
+  // ---- Initialize canvas ref via Skia hook ----
+  // We cannot call hooks conditionally, so we track whether Skia loaded
+  // and skip rendering if it hasn't.
+
+  // ---- compositeImage: export canvas as base64 ----
+  const compositeImage = useCallback((): string | null => {
+    const ref = canvasRefHolder.current.current;
+    if (!ref) return null;
+    try {
+      const snapshot = ref.makeImageSnapshot();
+      return snapshot.encodeToBase64('png', 100);
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const handleDone = useCallback(() => {
+    const annotated = compositeImage();
+    onDone(annotated ?? screenshot, screenshot);
+  }, [compositeImage, onDone, screenshot]);
+
+  // ---- PanResponder for touch drawing ----
+  const panResponderRef = useRef<{ panHandlers: Record<string, unknown> } | null>(null);
+
+  useEffect(() => {
+    if (!rnMod) return;
+    panResponderRef.current = rnMod.PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (
+        evt: { nativeEvent: { locationX: number; locationY: number } },
+      ) => {
+        drawActions.startOperation({
+          x: evt.nativeEvent.locationX,
+          y: evt.nativeEvent.locationY,
+        });
+      },
+      onPanResponderMove: (
+        evt: { nativeEvent: { locationX: number; locationY: number } },
+      ) => {
+        drawActions.continueOperation({
+          x: evt.nativeEvent.locationX,
+          y: evt.nativeEvent.locationY,
+        });
+      },
+      onPanResponderRelease: () => {
+        drawActions.endOperation();
+      },
+    });
+  }, [rnMod, drawActions]);
+
+  // ---- Render: loading / error / canvas ----
+
+  // Fallback if modules not loaded yet
+  if (loadError) {
+    // Render plain React element since react-native may not be available
+    return React.createElement(
+      'div',
+      { style: { padding: 20, backgroundColor: '#1a1a1a', flex: 1 } },
+      React.createElement(
+        'p',
+        { style: { color: '#ff6b6b', fontSize: 16 } },
+        loadError,
+      ),
+    );
+  }
+
+  if (!skia || !rnMod) {
+    // Still loading
+    return null;
+  }
+
+  const {
+    Canvas,
+    Image: SkiaImageComponent,
+    Path: SkiaPathComponent,
+    Rect: SkiaRectComponent,
+    Circle: SkiaCircleComponent,
+    Line: SkiaLineComponent,
+    Skia: SkiaStatic,
+    useCanvasRef,
+  } = skia;
+
+  const { View } = rnMod;
+
+  // ---- Render a single DrawingOperation as Skia elements ----
+  function renderOperation(op: DrawingOperation): React.ReactNode {
+    const key = `op-${op.id}`;
+    switch (op.tool) {
+      case 'pen':
+      case 'eraser': {
+        if (!op.points || op.points.length === 0) return null;
+        const path = buildFreehandPath(SkiaStatic, op.points);
+        return React.createElement(SkiaPathComponent, {
+          key,
+          path,
+          color: op.tool === 'eraser' ? '#000000' : op.color,
+          style: 'stroke',
+          strokeWidth: op.tool === 'eraser' ? op.strokeWidth * 3 : op.strokeWidth,
+          strokeCap: 'round',
+          strokeJoin: 'round',
+        });
+      }
+      case 'rectangle': {
+        if (!op.startPoint || !op.endPoint) return null;
+        const x = Math.min(op.startPoint.x, op.endPoint.x);
+        const y = Math.min(op.startPoint.y, op.endPoint.y);
+        const w = Math.abs(op.endPoint.x - op.startPoint.x);
+        const h = Math.abs(op.endPoint.y - op.startPoint.y);
+        return React.createElement(SkiaRectComponent, {
+          key,
+          x,
+          y,
+          width: w,
+          height: h,
+          color: op.color,
+          style: 'stroke',
+          strokeWidth: op.strokeWidth,
+        });
+      }
+      case 'arrow': {
+        if (!op.startPoint || !op.endPoint) return null;
+        const headLen = Math.max(12, op.strokeWidth * 4);
+        const arrowHead = buildArrowHeadPath(
+          SkiaStatic,
+          op.startPoint,
+          op.endPoint,
+          headLen,
+        );
+        return React.createElement(
+          React.Fragment,
+          { key },
+          React.createElement(SkiaLineComponent, {
+            p1: op.startPoint,
+            p2: op.endPoint,
+            color: op.color,
+            style: 'stroke',
+            strokeWidth: op.strokeWidth,
+            strokeCap: 'round',
+          }),
+          React.createElement(SkiaPathComponent, {
+            path: arrowHead,
+            color: op.color,
+            style: 'stroke',
+            strokeWidth: op.strokeWidth,
+            strokeCap: 'round',
+          }),
+        );
+      }
+      case 'circle': {
+        if (!op.startPoint || !op.endPoint) return null;
+        const cx = op.startPoint.x;
+        const cy = op.startPoint.y;
+        const r = Math.sqrt(
+          (op.endPoint.x - cx) ** 2 + (op.endPoint.y - cy) ** 2,
+        );
+        return React.createElement(SkiaCircleComponent, {
+          key,
+          cx,
+          cy,
+          r,
+          color: op.color,
+          style: 'stroke',
+          strokeWidth: op.strokeWidth,
+        });
+      }
+      default:
+        return null;
+    }
+  }
+
+  // ---- All operations to render (completed + current in-progress) ----
+  const allOperations = drawState.currentOperation
+    ? [...drawState.operations, drawState.currentOperation]
+    : drawState.operations;
+
+  // ---- Component tree ----
+  // We use React.createElement throughout because JSX for Skia/RN components
+  // loaded dynamically would require more complex typing.
+
+  return React.createElement(
+    View,
+    {
+      style: {
+        flex: 1,
+        backgroundColor: '#000000',
+      },
+    },
+    // Drawing surface with PanResponder
+    React.createElement(
+      View,
+      {
+        style: {
+          width: dimensions.width,
+          height: dimensions.height,
+        },
+        ...(panResponderRef.current?.panHandlers ?? {}),
+      },
+      React.createElement(
+        Canvas,
+        {
+          style: {
+            width: dimensions.width,
+            height: dimensions.height,
+          },
+        },
+        // Background screenshot
+        backgroundImage
+          ? React.createElement(SkiaImageComponent, {
+              image: backgroundImage,
+              x: 0,
+              y: 0,
+              width: dimensions.width,
+              height: dimensions.height,
+              fit: 'contain',
+            })
+          : null,
+        // All drawing operations
+        ...allOperations.map(renderOperation),
+      ),
+    ),
+    // Toolbar overlay
+    React.createElement(Toolbar, {
+      rn: rnMod,
+      tool: drawState.tool,
+      color: drawState.color,
+      strokeSize: drawState.strokeSize,
+      canUndo: drawState.canUndo,
+      canRedo: drawState.canRedo,
+      onSetTool: drawActions.setTool,
+      onSetColor: drawActions.setColor,
+      onSetStrokeSize: drawActions.setStrokeSize,
+      onUndo: drawActions.undo,
+      onRedo: drawActions.redo,
+      onDone: handleDone,
+      onCancel,
+    }),
+  );
+}

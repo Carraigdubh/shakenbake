@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { MockInstance } from 'vitest';
 import { ShakeNbakeError } from '@shakenbake/core';
-import { linearFetch, VIEWER_QUERY, ISSUE_CREATE_MUTATION, FILE_UPLOAD_MUTATION } from '../graphql.js';
+import { linearFetch, requestUploadUrl, VIEWER_QUERY, ISSUE_CREATE_MUTATION, FILE_UPLOAD_MUTATION } from '../graphql.js';
 
 describe('linearFetch', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,6 +140,31 @@ describe('linearFetch', () => {
     }
   });
 
+  it('throws RATE_LIMITED on GraphQL RATELIMITED extension code', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          errors: [
+            {
+              message: 'Rate limit exceeded',
+              extensions: { code: 'RATELIMITED' },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    try {
+      await linearFetch('key', 'https://api.linear.app/graphql', VIEWER_QUERY);
+      expect.unreachable('Should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShakeNbakeError);
+      expect((e as ShakeNbakeError).code).toBe('RATE_LIMITED');
+      expect((e as ShakeNbakeError).retryable).toBe(true);
+    }
+  });
+
   it('throws AUTH_FAILED on GraphQL authentication error', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
@@ -188,9 +213,130 @@ describe('GraphQL constants', () => {
     expect(ISSUE_CREATE_MUTATION).toContain('url');
   });
 
-  it('FILE_UPLOAD_MUTATION contains fileUpload', () => {
+  it('FILE_UPLOAD_MUTATION contains fileUpload with headers', () => {
     expect(FILE_UPLOAD_MUTATION).toContain('fileUpload');
     expect(FILE_UPLOAD_MUTATION).toContain('uploadUrl');
     expect(FILE_UPLOAD_MUTATION).toContain('assetUrl');
+    expect(FILE_UPLOAD_MUTATION).toContain('headers');
+    expect(FILE_UPLOAD_MUTATION).toContain('key');
+    expect(FILE_UPLOAD_MUTATION).toContain('value');
+    expect(FILE_UPLOAD_MUTATION).toContain('success');
+  });
+});
+
+describe('requestUploadUrl', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let fetchMock: MockInstance<any>;
+
+  beforeEach(() => {
+    fetchMock = vi.spyOn(globalThis, 'fetch');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns uploadUrl, assetUrl, and headers on success', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            fileUpload: {
+              success: true,
+              uploadFile: {
+                uploadUrl: 'https://uploads.linear.app/upload-1',
+                assetUrl: 'https://assets.linear.app/asset-1',
+                headers: [{ key: 'x-amz-acl', value: 'public-read' }],
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await requestUploadUrl(
+      'api-key',
+      'https://api.linear.app/graphql',
+      'test.png',
+      'image/png',
+      1024,
+    );
+
+    expect(result.uploadUrl).toBe('https://uploads.linear.app/upload-1');
+    expect(result.assetUrl).toBe('https://assets.linear.app/asset-1');
+    expect(result.headers).toEqual([{ key: 'x-amz-acl', value: 'public-read' }]);
+  });
+
+  it('throws UPLOAD_FAILED when success is false', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            fileUpload: {
+              success: false,
+              uploadFile: {
+                uploadUrl: '',
+                assetUrl: '',
+                headers: [],
+              },
+            },
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    try {
+      await requestUploadUrl(
+        'api-key',
+        'https://api.linear.app/graphql',
+        'test.png',
+        'image/png',
+        1024,
+      );
+      expect.unreachable('Should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShakeNbakeError);
+      expect((e as ShakeNbakeError).code).toBe('UPLOAD_FAILED');
+    }
+  });
+
+  it('propagates AUTH_FAILED from linearFetch', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response('Unauthorized', { status: 401 }),
+    );
+
+    try {
+      await requestUploadUrl(
+        'bad-key',
+        'https://api.linear.app/graphql',
+        'test.png',
+        'image/png',
+        1024,
+      );
+      expect.unreachable('Should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShakeNbakeError);
+      expect((e as ShakeNbakeError).code).toBe('AUTH_FAILED');
+    }
+  });
+
+  it('propagates NETWORK_ERROR from linearFetch', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+
+    try {
+      await requestUploadUrl(
+        'api-key',
+        'https://api.linear.app/graphql',
+        'test.png',
+        'image/png',
+        1024,
+      );
+      expect.unreachable('Should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(ShakeNbakeError);
+      expect((e as ShakeNbakeError).code).toBe('NETWORK_ERROR');
+    }
   });
 });

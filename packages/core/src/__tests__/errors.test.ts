@@ -47,12 +47,24 @@ describe('ShakeNbakeError', () => {
     expect(err.retryable).toBe(true);
   });
 
+  it('should allow overriding retryable to false for retryable codes', () => {
+    const err = new ShakeNbakeError('forced not retryable', 'NETWORK_ERROR', {
+      retryable: false,
+    });
+    expect(err.retryable).toBe(false);
+  });
+
   it('should store the original error', () => {
     const original = new TypeError('inner');
     const err = new ShakeNbakeError('wrapped', 'UNKNOWN', {
       originalError: original,
     });
     expect(err.originalError).toBe(original);
+  });
+
+  it('should have undefined originalError when not provided', () => {
+    const err = new ShakeNbakeError('no original', 'UNKNOWN');
+    expect(err.originalError).toBeUndefined();
   });
 
   it('isRetryable static method returns correct values', () => {
@@ -76,5 +88,11 @@ describe('ShakeNbakeError', () => {
         ERROR_MESSAGES[code],
       );
     }
+  });
+
+  it('has a proper stack trace', () => {
+    const err = new ShakeNbakeError('stack check', 'UNKNOWN');
+    expect(err.stack).toBeDefined();
+    expect(err.stack).toContain('ShakeNbakeError');
   });
 });

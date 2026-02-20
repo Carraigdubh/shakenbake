@@ -1,0 +1,13 @@
+{
+  "agent": "whycode:frontend-web-agent",
+  "planId": "03-01",
+  "status": "pass",
+  "resolvedContext": {
+    "frameworkMode": "react-web",
+    "renderingBaseline": "client-heavy"
+  },
+  "source": "capability-plan",
+  "commandsBlockedForSafety": [],
+  "requiresUserInput": false,
+  "notes": "Web SDK package (@shakenbake/web) is a standalone React/DOM library, not a Next.js app. Framework mode is 'react-web' since this package provides client-side trigger plugins, screenshot capture via html2canvas-pro, and browser context collection. Rendering baseline is 'client-heavy' as all web SDK functionality is inherently client-side (DOM event listeners, Canvas APIs, navigator APIs). No server components involved at this layer. Dependencies to add: react/react-dom as peerDependencies, html2canvas-pro as dependency, @types/react and @types/react-dom as devDependencies, jsdom for vitest testing environment. tsconfig.json needs jsx and DOM lib settings."
+}

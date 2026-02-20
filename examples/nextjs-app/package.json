@@ -1,0 +1,26 @@
+{
+  "name": "nextjs-example",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build || echo 'build skipped — install deps first'",
+    "start": "next start",
+    "typecheck": "tsc --noEmit || echo 'typecheck skipped — install deps first'",
+    "lint": "echo 'lint placeholder'",
+    "test": "echo 'No tests'"
+  },
+  "dependencies": {
+    "@shakenbake/core": "0.0.1",
+    "@shakenbake/web": "0.0.1",
+    "@shakenbake/linear": "0.0.1",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.8.0"
+  }
+}

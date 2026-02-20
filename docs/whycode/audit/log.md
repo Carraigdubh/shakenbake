@@ -84,3 +84,69 @@
 - test: PASS (109 total: 52 core + 57 linear)
 - build: PASS (exit 0) - all 6 packages
 - smoke: PASS (LinearAdapter instantiates from dist, name='linear')
+
+---
+
+## 2026-02-20T19:00Z - Plan 02-01 Completed
+
+- **Phase**: 5 (Implementation)
+- **Plan**: 02-01 (Linear Adapter - Issue Creation)
+- **Result**: PASS
+- **Tests**: 109/109 passing (52 core + 57 linear)
+- **Iterations**: 1
+
+---
+
+## 2026-02-20T19:13:00Z - Plan 02-02: Linear Adapter - File Upload
+
+**Agent**: whycode:backend-agent | **Iteration**: 1 | **Outcome**: PLAN_COMPLETE
+
+### Tasks Completed
+- **task-010**: Updated FILE_UPLOAD_MUTATION with `success` and `headers { key value }`, added FileUploadHeader/UploadUrlResult types, created requestUploadUrl helper function
+- **task-011**: Refactored uploadImage to use requestUploadUrl, added content type detection via static detectContentType(), applies additional headers from fileUpload response to PUT, handles Buffer and Blob inputs
+- **task-012**: Added GraphQL RATELIMITED extension code detection in linearFetch, created upload.test.ts with 30 tests, added 5 tests to graphql.test.ts, updated adapter.test.ts for new response shape
+
+### Verification
+- typecheck: PASS (exit 0) - all 6 packages
+- lint: PASS (exit 0) - all 6 packages
+- test: PASS (144 total: 52 core + 92 linear)
+- build: PASS (exit 0) - all 6 packages
+- smoke: PASS (LinearAdapter methods all functions, requestUploadUrl exported)
+
+---
+
+## 2026-02-20T19:13Z - Plan 02-02 Completed
+
+- **Phase**: 5 (Implementation)
+- **Plan**: 02-02 (Linear Adapter - File Upload)
+- **Result**: PASS
+- **Tests**: 144/144 passing (52 core + 92 linear)
+- **Iterations**: 1
+
+---
+
+## 2026-02-20T20:11:00Z - Plan 06-01: MockAdapter & Final Polish
+
+**Agent**: whycode:backend-agent | **Iteration**: 1 | **Outcome**: PLAN_COMPLETE
+
+### Tasks Completed
+- **task-034**: Created MockAdapter class implementing DestinationAdapter interface. Uses platform-agnostic UUID generation (no node:crypto import). Supports configurable delay, in-memory report storage, and test helpers (getSubmittedReports, clearReports).
+- **task-035**: Exported MockAdapter and MockAdapterConfig from core index.ts. Created 18 comprehensive unit tests covering all methods, edge cases, delay behavior, and interface compliance.
+- **task-036**: Full monorepo integration verification. Fixed node:crypto webpack bundling issue in MockAdapter. Fixed example app graceful script fallbacks for missing deps.
+
+### Verification
+- typecheck: PASS (exit 0) - all 8 packages
+- lint: PASS (exit 0) - all 8 packages
+- test: PASS (391 total: 70 core + 92 linear + 142 web + 87 react-native)
+- build: PASS (exit 0) - all 8 packages including nextjs-example
+- smoke: PASS (MockAdapter, PluginRegistry, ReportBuilder, ShakeNbakeError all export as functions)
+
+---
+
+## 2026-02-20T20:11Z - Plan 06-01 Completed
+
+- **Phase**: 5 (Implementation)
+- **Plan**: 06-01 (MockAdapter & Final Polish)
+- **Result**: PASS
+- **Tests**: 391/391 passing (70 core + 92 linear + 142 web + 87 react-native)
+- **Iterations**: 1

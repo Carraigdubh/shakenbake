@@ -1,0 +1,31 @@
+{
+  "runId": "01-02-1-2026-02-20T18-46-00Z",
+  "planId": "01-02",
+  "iteration": 1,
+  "outcome": "PLAN_COMPLETE",
+  "tasksCompleted": ["task-004", "task-005", "task-006"],
+  "tasksPending": [],
+  "taskStatus": [
+    { "id": "task-004", "status": "done", "verifiedBy": "tsc --noEmit", "verifiedAt": "2026-02-20T18:50:00Z" },
+    { "id": "task-005", "status": "done", "verifiedBy": "tsc --noEmit", "verifiedAt": "2026-02-20T18:50:00Z" },
+    { "id": "task-006", "status": "done", "verifiedBy": "vitest run", "verifiedAt": "2026-02-20T18:51:00Z" }
+  ],
+  "selfValidation": {
+    "typecheck": { "status": "pass", "exitCode": 0 },
+    "lint": { "status": "pass", "exitCode": 0 },
+    "test": { "status": "pass", "passed": 52, "failed": 0 },
+    "build": { "status": "pass", "exitCode": 0 },
+    "smoke": { "status": "pass", "appStarted": true }
+  },
+  "filesChanged": {
+    "created": [],
+    "modified": [
+      "packages/core/src/plugin-registry.ts",
+      "packages/core/src/report-builder.ts",
+      "packages/core/src/__tests__/plugin-registry.test.ts",
+      "packages/core/src/__tests__/report-builder.test.ts",
+      "packages/core/src/__tests__/errors.test.ts"
+    ]
+  },
+  "notes": "Refactored PluginRegistry to use Maps (prevents duplicates), added clear() method. Enhanced ReportBuilder submit() to wrap errors as ShakeNbakeError, added fallbackUUID for older runtimes. PluginRegistry.collectContext now handles individual collector failures gracefully. Expanded test suite from 28 to 52 tests covering: duplicate name overwrites, clear(), empty registry edge cases, collector error handling, submit error wrapping, call ordering, non-Error thrown values."
+}

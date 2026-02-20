@@ -15,14 +15,13 @@ import {
 } from './types.js';
 import {
   linearFetch,
+  requestUploadUrl,
   VIEWER_QUERY,
   ISSUE_CREATE_MUTATION,
-  FILE_UPLOAD_MUTATION,
 } from './graphql.js';
 import type {
   ViewerData,
   IssueCreateData,
-  FileUploadData,
 } from './graphql.js';
 import { buildIssueDescription } from './markdown.js';
 
@@ -48,7 +47,7 @@ export class LinearAdapter implements DestinationAdapter {
   /**
    * Upload an image to Linear via the two-step file upload flow:
    * 1. Call fileUpload mutation to get a signed upload URL and asset URL
-   * 2. PUT the image data to the signed URL
+   * 2. PUT the image data to the signed URL with headers from response
    * 3. Return the asset URL for embedding in the issue
    *
    * @throws {ShakeNbakeError} with code UPLOAD_FAILED on failure
@@ -60,22 +59,23 @@ export class LinearAdapter implements DestinationAdapter {
     const size =
       imageData instanceof Blob ? imageData.size : imageData.byteLength;
 
-    const contentType = filename.endsWith('.png')
-      ? 'image/png'
-      : filename.endsWith('.webm')
-        ? 'audio/webm'
-        : filename.endsWith('.m4a')
-          ? 'audio/m4a'
-          : 'image/jpeg';
+    const contentType = LinearAdapter.detectContentType(filename);
 
-    let uploadData: FileUploadData;
+    // Step 1: Request a signed upload URL from Linear
+    let uploadUrl: string;
+    let assetUrl: string;
+    let uploadHeaders: Array<{ key: string; value: string }>;
     try {
-      uploadData = await linearFetch<FileUploadData>(
+      const result = await requestUploadUrl(
         this.config.apiKey,
         this.apiUrl,
-        FILE_UPLOAD_MUTATION,
-        { size, contentType, filename },
+        filename,
+        contentType,
+        size,
       );
+      uploadUrl = result.uploadUrl;
+      assetUrl = result.assetUrl;
+      uploadHeaders = result.headers;
     } catch (error: unknown) {
       if (error instanceof ShakeNbakeError) {
         throw error;
@@ -87,8 +87,6 @@ export class LinearAdapter implements DestinationAdapter {
       );
     }
 
-    const { uploadUrl, assetUrl } = uploadData.fileUpload.uploadFile;
-
     // Step 2: PUT the image data to the signed URL
     try {
       // Convert Buffer to Blob for fetch body compatibility across environments
@@ -97,12 +95,20 @@ export class LinearAdapter implements DestinationAdapter {
           ? imageData
           : new Blob([new Uint8Array(imageData)], { type: contentType });
 
+      // Build headers: Content-Type + Cache-Control + any headers from Linear
+      const putHeaders: Record<string, string> = {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000',
+      };
+
+      // Apply additional headers returned by the fileUpload mutation
+      for (const header of uploadHeaders) {
+        putHeaders[header.key] = header.value;
+      }
+
       const putResponse = await fetch(uploadUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000',
-        },
+        headers: putHeaders,
         body,
       });
 
@@ -110,7 +116,7 @@ export class LinearAdapter implements DestinationAdapter {
         throw new ShakeNbakeError(
           `File upload to Linear storage failed (HTTP ${String(putResponse.status)})`,
           'UPLOAD_FAILED',
-          { retryable: true },
+          { retryable: false },
         );
       }
     } catch (error: unknown) {
@@ -125,6 +131,21 @@ export class LinearAdapter implements DestinationAdapter {
     }
 
     return assetUrl;
+  }
+
+  /**
+   * Detect the content type from a filename extension.
+   */
+  static detectContentType(filename: string): string {
+    const lower = filename.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.webm')) return 'audio/webm';
+    if (lower.endsWith('.m4a')) return 'audio/m4a';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    return 'application/octet-stream';
   }
 
   /**

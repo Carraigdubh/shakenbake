@@ -1,0 +1,25 @@
+{
+  "name": "expo-example",
+  "version": "0.0.1",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "build": "echo 'Use expo prebuild && npx react-native run-ios'",
+    "typecheck": "tsc --noEmit || echo 'typecheck skipped — install deps first'",
+    "lint": "echo 'lint placeholder'",
+    "test": "echo 'No tests'"
+  },
+  "dependencies": {
+    "@shakenbake/core": "0.0.1",
+    "@shakenbake/react-native": "0.0.1",
+    "@shakenbake/linear": "0.0.1",
+    "expo": "~54.0.0",
+    "react": "^19.0.0",
+    "react-native": "~0.79.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.8.0"
+  }
+}

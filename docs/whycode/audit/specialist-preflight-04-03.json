@@ -1,0 +1,13 @@
+{
+  "agent": "whycode:frontend-native-agent",
+  "planId": "04-03",
+  "status": "pass",
+  "resolvedContext": {
+    "appType": "expo-managed",
+    "router": "expo-router"
+  },
+  "source": "capability-plan",
+  "commandsBlockedForSafety": [],
+  "requiresUserInput": false,
+  "notes": "Plan 04-03: React Native SDK Report Form and Provider. All prerequisites confirmed: @shakenbake/core types (BugReport, ReportInput, SubmitResult, ShakeNbakeConfig, PluginRegistry, ReportBuilder) are available. Plans 04-01 and 04-02 are complete with ShakeTrigger, ViewShotCapture, DeviceContextCollector, DrawingCanvas, and useDrawingOperations all implemented and tested (44 passing tests). This plan adds ReportForm UI component (Task 028), ShakeNbakeProvider + useShakeNbake hook (Task 029), and integration wiring with tests (Task 030). All components use dynamic imports for react-native peer deps following the established pattern from DrawingCanvas. Package is a library, not an Expo app."
+}

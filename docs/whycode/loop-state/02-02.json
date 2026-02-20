@@ -1,0 +1,18 @@
+{
+  "planId": "02-02",
+  "planName": "Linear Adapter - File Upload",
+  "agentType": "whycode:backend-agent",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "complete",
+  "currentRunId": "02-02-1-2026-02-20T19-01-00Z",
+  "tasks": [
+    { "id": "task-010", "name": "Implement fileUpload mutation", "status": "done", "lastVerified": "2026-02-20T19:19:00Z" },
+    { "id": "task-011", "name": "Implement uploadImage", "status": "done", "lastVerified": "2026-02-20T19:19:00Z" },
+    { "id": "task-012", "name": "Add rate limiting and tests", "status": "done", "lastVerified": "2026-02-20T19:19:00Z" }
+  ],
+  "iterations": [
+    { "iteration": 1, "startedAt": "2026-02-20T19:01:00Z", "outcome": "PLAN_COMPLETE" }
+  ],
+  "lastVerificationFailure": null
+}

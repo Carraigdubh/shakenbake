@@ -46,3 +46,7 @@ export { PluginRegistry } from './plugin-registry.js';
 
 // Report Builder
 export { ReportBuilder } from './report-builder.js';
+
+// Mock Adapter (testing / development)
+export { MockAdapter } from './mock-adapter.js';
+export type { MockAdapterConfig } from './mock-adapter.js';

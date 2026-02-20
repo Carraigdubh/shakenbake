@@ -1,0 +1,13 @@
+{
+  "agent": "whycode:frontend-web-agent",
+  "planId": "05-01",
+  "status": "pass",
+  "resolvedContext": {
+    "frameworkMode": "next-app-router",
+    "renderingBaseline": "server-first"
+  },
+  "source": "capability-plan",
+  "commandsBlockedForSafety": [],
+  "requiresUserInput": false,
+  "notes": "Plan 05-01 creates two example apps (Next.js + Expo) and README files. The Next.js example uses App Router with a client-side ShakeNbakeProvider wrapper and a server-side API route for the proxy pattern. The Expo example is a minimal TypeScript stub demonstrating @shakenbake/react-native. Neither app needs to fully run — they need to typecheck and not break the monorepo build. The monorepo uses turborepo with yarn workspaces. Workspace dependencies reference version 0.0.1 of the SDK packages. The Next.js app uses 'use client' for the layout since ShakeNbakeProvider requires browser APIs. The API route uses Next.js App Router route handlers (route.ts with GET/POST exports). skipLibCheck: true will be used in both example tsconfigs to handle any missing peer dep types."
+}

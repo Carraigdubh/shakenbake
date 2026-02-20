@@ -1,0 +1,13 @@
+{
+  "agent": "whycode:frontend-web-agent",
+  "planId": "03-02",
+  "status": "pass",
+  "resolvedContext": {
+    "frameworkMode": "react-web",
+    "renderingBaseline": "client-heavy"
+  },
+  "source": "capability-plan",
+  "commandsBlockedForSafety": [],
+  "requiresUserInput": false,
+  "notes": "Annotation canvas for @shakenbake/web package. This is a client-side React component using HTML5 Canvas API for freehand drawing, shape tools (rectangle, arrow, circle), and image compositing. Framework mode is 'react-web' since this is a standalone SDK component, not a Next.js page. Rendering baseline is 'client-heavy' as Canvas drawing operations are inherently client-side. Will need to mock canvas context in vitest/jsdom since jsdom does not implement HTMLCanvasElement.getContext('2d'). Will use vitest setup file to provide canvas mocks. The vitest config needs to include .tsx test files. No external CSS dependencies; all styles are inline."
+}

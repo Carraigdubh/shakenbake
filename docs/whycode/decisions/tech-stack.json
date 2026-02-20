@@ -1,0 +1,23 @@
+{
+  "packageManager": "yarn",
+  "monorepo": "turborepo",
+  "language": "typescript",
+  "framework": {
+    "web": "next",
+    "mobile": "expo"
+  },
+  "expoSdk": "54",
+  "reactNative": "0.81",
+  "react": "19.1",
+  "orm": "drizzle",
+  "database": "neon",
+  "auth": "clerk",
+  "fileStorage": "vercel-blob",
+  "billing": "stripe",
+  "audioTranscription": "openai-whisper",
+  "rnAnnotation": "@shopify/react-native-skia",
+  "webScreenshot": "html2canvas-pro",
+  "deployment": "vercel",
+  "versionManagement": "changesets",
+  "testing": "vitest"
+}

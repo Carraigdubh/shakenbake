@@ -6,5 +6,8 @@
   "name": "ShakeNbake MVP Build",
   "completionMode": "strict",
   "runType": "new",
-  "parentRunId": null
+  "parentRunId": null,
+  "branch": "whycode/shakenbake-mvp-build-2026-02-20T13-45-06Z",
+  "baseBranch": "main",
+  "linearTeamId": "bcca4298-4b53-4060-9b3f-0e01e41b41dd"
 }

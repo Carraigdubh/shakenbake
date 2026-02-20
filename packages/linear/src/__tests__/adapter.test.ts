@@ -71,9 +71,11 @@ function putResponse(): Response {
 function fileUploadData(index: number) {
   return {
     fileUpload: {
+      success: true,
       uploadFile: {
         uploadUrl: `https://uploads.linear.app/upload-${String(index)}`,
         assetUrl: `https://assets.linear.app/asset-${String(index)}`,
+        headers: [],
       },
     },
   };

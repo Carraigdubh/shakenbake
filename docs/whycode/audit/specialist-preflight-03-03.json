@@ -1,0 +1,13 @@
+{
+  "agent": "whycode:frontend-web-agent",
+  "planId": "03-03",
+  "status": "pass",
+  "resolvedContext": {
+    "frameworkMode": "react-web",
+    "renderingBaseline": "client-heavy"
+  },
+  "source": "capability-plan",
+  "commandsBlockedForSafety": [],
+  "requiresUserInput": false,
+  "notes": "Plan 03-03: Web SDK Report Form & Provider. @shakenbake/web is a React client-side SDK (not Next.js App Router). Framework mode is react-web because this is a standalone SDK package, not a Next.js app. Rendering baseline is client-heavy (all components use client-side React with inline styles). Task 019: ReportForm component with portal, form validation, theme support, loading/success/error states. Task 020: ShakeNbakeProvider with state machine (idle -> triggered -> capturing -> annotating -> form -> submitting -> success/error -> idle), React context, and useShakeNbake hook. Task 021: ProxyAdapter (DestinationAdapter for server-side proxy pattern), integration tests, and full export wiring. All dependencies already installed (react, react-dom as peerDeps/devDeps, @shakenbake/core). vitest with jsdom environment configured. 96 existing tests passing."
+}

@@ -1,5 +1,5 @@
 {
-  "status": "gaps_found",
+  "status": "full_coverage",
   "detectedStack": [
     "typescript",
     "react",
@@ -58,8 +58,8 @@
     },
     {
       "surface": "backend",
-      "recommendedAgent": "whycode:backend-nextjs-agent",
-      "reason": "ShakeNbake Cloud (apps/cloud) is Next.js App Router with server-side API routes for report ingestion, Whisper transcription, and issue forwarding. Clerk authentication, Postgres/Prisma ORM, Vercel Blob storage, Stripe billing."
+      "recommendedAgent": "whycode:backend-auth-agent",
+      "reason": "Clerk authentication for Cloud app (apps/cloud) multi-tenant organization support. Specialist agent for auth patterns, scopes, and security model."
     },
     {
       "surface": "deploy",
@@ -74,5 +74,13 @@
   ],
   "gaps": [],
   "recommendedAction": "proceed",
-  "notes": "ShakeNbake is a pre-code cross-platform bug reporting SDK in specification phase. No mandatory specialist agent gaps detected. Detected specialist agents: frontend-web (Next.js), frontend-native (Expo/React Native), backend (TypeScript/GraphQL), backend-nextjs (Cloud app), deploy-vercel (Vercel deployment). Convex is not applicable (no cloud backend framework). No GitHub integration markers detected; Vercel is the reference deployment platform but CLI availability not confirmed in pre-code phase. Monorepo structure (Turborepo) will coordinate releases across 7 packages: core, react-native, web, linear, cloud-client, cloud app, and examples. Key architectural decisions: Skia for RN annotation (60fps GPU drawing), html2canvas for web screenshots, server-side proxy pattern for Linear API key security, Expo development builds required (no Expo Go). Routing prefers specialists when available: separate agents for frontend-web and frontend-native given the two distinct SDKs and platforms. Backend work is consolidated under a single backend agent (core types, plugin system, Linear adapter). Cloud deployment is specialized (Next.js with Vercel serverless). Recommend specialist agents for frontend-web, frontend-native, backend, backend-nextjs, and deploy-vercel surfaces."
+  "startupSelections": {
+    "completionMode": "strict",
+    "maxIterations": 30,
+    "speedMode": "turbo-teams",
+    "linearTeam": "Suisios (SUI)",
+    "runName": "ShakeNbake MVP Build",
+    "confirmedAt": "2026-02-20T18:30:00Z"
+  },
+  "notes": "FINAL CAPABILITY PLAN — FULL COVERAGE CONFIRMED. ShakeNbake is a pre-code cross-platform bug reporting SDK in specification phase. All mandatory specialist agents available and confirmed during startup: whycode:frontend-web-agent (Next.js, React, html2canvas), whycode:frontend-native-agent (Expo, React Native, Skia), whycode:backend-agent (core types, plugin system, GraphQL adapter, Postgres/Prisma), whycode:backend-auth-agent (Clerk multi-tenant), whycode:deploy-vercel-agent (Vercel serverless). Convex not applicable (Postgres + Prisma used instead). No GitHub integration detected; Vercel CLI status unknown in pre-code phase but Vercel deployment is reference platform. Monorepo (Turborepo) coordinates 7 packages: core, react-native, web, linear, cloud-client, cloud (Next.js), examples. Key architecture: separate frontend SDKs for web and native (distinct platforms, Skia vs html2canvas); single backend for core + GraphQL + Linear; specialist auth for Clerk; specialist deploy for Vercel. Routing rules: frontend-web -> whycode:frontend-web-agent; frontend-native -> whycode:frontend-native-agent; backend/plugin system -> whycode:backend-agent; Clerk auth -> whycode:backend-auth-agent; Vercel deploy -> whycode:deploy-vercel-agent. Selected: completion mode strict (no partial deliverables), max 30 iterations, turbo-teams speed (parallel specialist agents), Linear team Suisios (SUI) for issue tracking. Ready to spawn specialist team."
 }

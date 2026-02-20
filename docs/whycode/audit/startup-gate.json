@@ -1,0 +1,22 @@
+{
+  "status": "pass",
+  "runListed": true,
+  "runActionSelected": true,
+  "completionModeSelected": true,
+  "maxIterationsSelected": true,
+  "agentTeamsModeSelected": true,
+  "agentTeamsMode": "turbo-teams",
+  "capabilityPlanningCompleted": true,
+  "techCapabilityFileUpdated": true,
+  "capabilityDecisionRecorded": true,
+  "capabilityDecision": "proceed",
+  "convexModeResolved": true,
+  "convexMode": "not-applicable",
+  "runNameConfirmed": true,
+  "runRecordInitialized": true,
+  "runRecordVisible": true,
+  "linearKeyDetected": true,
+  "linearInitialized": true,
+  "branchInitialized": true,
+  "checkedAt": "2026-02-20T13:45:06Z"
+}

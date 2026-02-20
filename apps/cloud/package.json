@@ -1,0 +1,20 @@
+{
+  "name": "@shakenbake/cloud",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "echo 'cloud app build placeholder'",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint placeholder'",
+    "test": "echo 'no tests yet'",
+    "dev": "echo 'cloud app dev placeholder'",
+    "clean": "rm -rf .next dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@shakenbake/core": "0.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "@types/react": "^19.1.0"
+  }
+}

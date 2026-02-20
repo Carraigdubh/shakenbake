@@ -1,0 +1,10 @@
+{
+  "requirements": [
+    {
+      "runId": "2026-02-20T13-45-06Z",
+      "planId": "phase5-init",
+      "description": "Linear issue creation failed (connection error). Retry Linear batch issue creation when connection is available.",
+      "createdAt": "2026-02-20T14:00:00Z"
+    }
+  ]
+}
