@@ -1,0 +1,23 @@
+{
+  "planId": "01-01",
+  "planName": "Core Types & Plugin Interfaces",
+  "agentType": "whycode:backend-agent",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "complete",
+  "currentRunId": "01-01-1-2026-02-20T14-00-00Z",
+  "tasks": [
+    { "id": "task-001", "name": "Create TypeScript types and interfaces", "status": "done", "lastVerified": "2026-02-20T18:44:00Z" },
+    { "id": "task-002", "name": "Create ShakeNbakeError class and error codes", "status": "done", "lastVerified": "2026-02-20T18:44:00Z" },
+    { "id": "task-003", "name": "Create ReportBuilder class skeleton", "status": "done", "lastVerified": "2026-02-20T18:44:00Z" }
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "runId": "01-01-1-2026-02-20T14-00-00Z",
+      "outcome": "PLAN_COMPLETE",
+      "tasksCompleted": ["task-001", "task-002", "task-003"]
+    }
+  ],
+  "lastVerificationFailure": null
+}
