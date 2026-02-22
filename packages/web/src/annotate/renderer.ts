@@ -124,6 +124,40 @@ function drawCircle(
 }
 
 /**
+ * Draw an eraser stroke (freehand path that removes annotation pixels).
+ * Uses `destination-out` compositing to erase only the annotation layer,
+ * not the background screenshot.
+ */
+function drawEraser(
+  ctx: CanvasRenderingContext2D,
+  op: DrawingOperation,
+): void {
+  const pts = op.points;
+  if (!pts || pts.length === 0) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.strokeStyle = 'rgba(0,0,0,1)';
+  ctx.lineWidth = op.strokeWidth * 4; // Wider for easier erasing
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0]!.x, pts[0]!.y);
+
+  if (pts.length === 1) {
+    ctx.lineTo(pts[0]!.x + 0.1, pts[0]!.y + 0.1);
+  } else {
+    for (let i = 1; i < pts.length; i++) {
+      ctx.lineTo(pts[i]!.x, pts[i]!.y);
+    }
+  }
+
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
  * Render a single DrawingOperation onto a 2D canvas context.
  */
 export function renderOperation(
@@ -144,7 +178,7 @@ export function renderOperation(
       drawCircle(ctx, op);
       break;
     case 'eraser':
-      // Eraser is handled at the operations-array level (undo), not drawn.
+      drawEraser(ctx, op);
       break;
   }
 }
@@ -186,20 +220,32 @@ export async function compositeImage(
 ): Promise<string> {
   const img = await loadImage(screenshot);
 
-  const offscreen = document.createElement('canvas');
-  offscreen.width = dimensions.width;
-  offscreen.height = dimensions.height;
+  // Use a two-layer approach so the eraser only removes annotation pixels,
+  // not the background screenshot.
+  const annotationLayer = document.createElement('canvas');
+  annotationLayer.width = dimensions.width;
+  annotationLayer.height = dimensions.height;
 
-  const ctx = offscreen.getContext('2d');
+  const annotationCtx = annotationLayer.getContext('2d');
+  if (!annotationCtx) {
+    throw new Error('Failed to obtain 2D context for compositing');
+  }
+
+  // Draw annotations on a transparent layer.
+  renderAllOperations(annotationCtx, operations);
+
+  // Composite: background + annotation layer.
+  const output = document.createElement('canvas');
+  output.width = dimensions.width;
+  output.height = dimensions.height;
+
+  const ctx = output.getContext('2d');
   if (!ctx) {
     throw new Error('Failed to obtain 2D context for compositing');
   }
 
-  // Draw the screenshot background.
   ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+  ctx.drawImage(annotationLayer, 0, 0);
 
-  // Replay all drawing operations on top.
-  renderAllOperations(ctx, operations);
-
-  return offscreen.toDataURL('image/png');
+  return output.toDataURL('image/png');
 }

@@ -23,6 +23,7 @@ import type {
   AccessibilityInfo as AccessibilityInfoType,
   Platform,
 } from '@shakenbake/core';
+import { redactContext } from '@shakenbake/core';
 
 // ---------------------------------------------------------------------------
 // Helper: safely dynamic-import a module; returns undefined on failure.
@@ -290,9 +291,24 @@ async function collectLocale(): Promise<LocaleInfo> {
  * independently guarded so a missing module produces a partial result
  * rather than an error.
  */
+/** Options for configuring the device context collector. */
+export interface DeviceContextCollectorOptions {
+  /**
+   * Dot-path patterns of fields to redact from collected context.
+   * E.g. `["device.deviceName", "locale"]` removes the device name and entire locale section.
+   */
+  redactFields?: string[];
+}
+
 export class DeviceContextCollector implements ContextCollector {
   readonly name = 'device';
   readonly platform: Platform = 'react-native';
+
+  private readonly redactFields: string[];
+
+  constructor(options?: DeviceContextCollectorOptions) {
+    this.redactFields = options?.redactFields ?? [];
+  }
 
   async collect(): Promise<Partial<DeviceContext>> {
     // Import modules once — each import is independent and guarded.
@@ -336,7 +352,7 @@ export class DeviceContextCollector implements ContextCollector {
       sdkVersion: platformFromConstants.sdkVersion,
     };
 
-    return {
+    const context: Partial<DeviceContext> = {
       platform,
       device,
       screen,
@@ -346,5 +362,11 @@ export class DeviceContextCollector implements ContextCollector {
       app,
       accessibility,
     };
+
+    if (this.redactFields.length > 0) {
+      return redactContext(context, this.redactFields);
+    }
+
+    return context;
   }
 }

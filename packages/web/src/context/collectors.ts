@@ -16,6 +16,7 @@ import type {
   PerformanceInfo,
   ConsoleInfo,
 } from '@shakenbake/core';
+import { redactContext } from '@shakenbake/core';
 
 import type { ConsoleInterceptor } from './console-interceptor.js';
 
@@ -47,6 +48,11 @@ export interface BrowserContextCollectorOptions {
    * When provided, captured console entries will be included in the context.
    */
   consoleInterceptor?: ConsoleInterceptor;
+  /**
+   * Dot-path patterns of fields to redact from collected context.
+   * E.g. `["app.url", "console"]` removes the URL and entire console section.
+   */
+  redactFields?: string[];
 }
 
 /**
@@ -60,9 +66,11 @@ export class BrowserContextCollector implements ContextCollector {
   readonly platform = 'web' as const;
 
   private readonly consoleInterceptor?: ConsoleInterceptor;
+  private readonly redactFields: string[];
 
   constructor(options?: BrowserContextCollectorOptions) {
     this.consoleInterceptor = options?.consoleInterceptor;
+    this.redactFields = options?.redactFields ?? [];
   }
 
   async collect(): Promise<Partial<DeviceContext>> {
@@ -77,6 +85,10 @@ export class BrowserContextCollector implements ContextCollector {
     context.accessibility = this.collectAccessibility();
     context.performance = this.collectPerformance();
     context.console = this.collectConsole();
+
+    if (this.redactFields.length > 0) {
+      return redactContext(context, this.redactFields);
+    }
 
     return context;
   }

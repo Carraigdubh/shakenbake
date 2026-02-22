@@ -140,7 +140,11 @@ export function ShakeNbakeProvider(
     const shakeTrigger = new ShakeTrigger();
     registry.registerTrigger(shakeTrigger);
     registry.registerCapture(capturePlugin);
-    registry.registerCollector(new DeviceContextCollector());
+    registry.registerCollector(
+      new DeviceContextCollector({
+        redactFields: config.privacy?.redactFields,
+      }),
+    );
 
     // Register additional triggers from config
     if (config.triggers) {

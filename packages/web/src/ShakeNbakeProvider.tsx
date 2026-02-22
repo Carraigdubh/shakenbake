@@ -140,7 +140,10 @@ export function ShakeNbakeProvider({
     consoleInterceptor.install();
 
     registry.registerCollector(
-      new BrowserContextCollector({ consoleInterceptor }),
+      new BrowserContextCollector({
+        consoleInterceptor,
+        redactFields: config.privacy?.redactFields,
+      }),
     );
 
     // Register any additional user-provided triggers.

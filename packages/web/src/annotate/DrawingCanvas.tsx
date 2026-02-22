@@ -160,6 +160,7 @@ const AVAILABLE_TOOLS: DrawingTool[] = [
   'rectangle',
   'arrow',
   'circle',
+  'eraser',
 ];
 
 export function DrawingCanvas({
@@ -233,10 +234,25 @@ export function DrawingCanvas({
         );
       }
 
-      // Replay committed operations.
-      renderAllOperations(ctx, ops);
+      // Render annotations on a separate layer so eraser only removes annotations.
+      const hasEraser = ops.some((o) => o.tool === 'eraser') ||
+        preview?.tool === 'eraser';
 
-      // Draw in-progress shape preview.
+      if (hasEraser) {
+        const annotationLayer = document.createElement('canvas');
+        annotationLayer.width = dimensions.width;
+        annotationLayer.height = dimensions.height;
+        const aCtx = annotationLayer.getContext('2d');
+        if (aCtx) {
+          renderAllOperations(aCtx, ops);
+          if (preview) renderOperation(aCtx, preview);
+          ctx.drawImage(annotationLayer, 0, 0);
+          return;
+        }
+      }
+
+      // Fast path: no eraser, draw directly.
+      renderAllOperations(ctx, ops);
       if (preview) {
         renderOperation(ctx, preview);
       }
@@ -270,9 +286,9 @@ export function DrawingCanvas({
       const pt = getCanvasPoint(clientX, clientY);
       setIsDrawing(true);
 
-      if (activeTool === 'pen') {
+      if (activeTool === 'pen' || activeTool === 'eraser') {
         currentOpRef.current = {
-          tool: 'pen',
+          tool: activeTool,
           color: activeColor,
           strokeWidth: activeStroke,
           points: [pt],
@@ -299,7 +315,7 @@ export function DrawingCanvas({
       if (!isDrawing || !currentOpRef.current) return;
       const pt = getCanvasPoint(clientX, clientY);
 
-      if (currentOpRef.current.tool === 'pen') {
+      if (currentOpRef.current.tool === 'pen' || currentOpRef.current.tool === 'eraser') {
         currentOpRef.current.points!.push(pt);
         // For pen tool, draw incrementally for performance.
         const canvas = canvasRef.current;
