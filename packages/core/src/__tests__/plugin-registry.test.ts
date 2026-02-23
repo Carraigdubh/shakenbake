@@ -73,7 +73,7 @@ describe('PluginRegistry', () => {
       expect(registry.getTriggers()[0]?.name).toBe('keyboard');
     });
 
-    it('activates and deactivates all triggers', () => {
+    it('activates and deactivates all triggers', async () => {
       const registry = new PluginRegistry();
       const t1 = makeTrigger('shake');
       const t2 = makeTrigger('keyboard');
@@ -81,7 +81,7 @@ describe('PluginRegistry', () => {
       registry.registerTrigger(t2);
 
       const onTrigger = vi.fn();
-      registry.activateTriggers(onTrigger);
+      await registry.activateTriggers(onTrigger);
       expect(t1.activate).toHaveBeenCalledWith(onTrigger);
       expect(t2.activate).toHaveBeenCalledWith(onTrigger);
 
@@ -113,10 +113,10 @@ describe('PluginRegistry', () => {
       expect(registry.getTriggers()).toHaveLength(1);
     });
 
-    it('activateTriggers is a no-op on empty registry', () => {
+    it('activateTriggers is a no-op on empty registry', async () => {
       const registry = new PluginRegistry();
       // Should not throw
-      registry.activateTriggers(vi.fn());
+      await registry.activateTriggers(vi.fn());
     });
 
     it('deactivateTriggers is a no-op on empty registry', () => {
