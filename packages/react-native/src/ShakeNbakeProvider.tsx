@@ -183,10 +183,20 @@ export function ShakeNbakeProvider(
 
   // ---- Activate triggers with the handler ----
   useEffect(() => {
-    if (!config.enabled || !registryRef.current) return;
-    registryRef.current.activateTriggers(handleTrigger);
+    let cancelled = false;
+
+    const activateAll = async () => {
+      const registry = registryRef.current;
+      if (!registry || cancelled) return;
+      await registry.activateTriggers(handleTrigger);
+    };
+
+    if (config.enabled) {
+      activateAll();
+    }
 
     return () => {
+      cancelled = true;
       registryRef.current?.deactivateTriggers();
     };
   }, [config.enabled, handleTrigger]);
