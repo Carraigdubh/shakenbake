@@ -161,15 +161,22 @@ export function ShakeNbakeProvider({
     }
 
     // Activate triggers — the callback will set step to 'triggered'.
-    // We use a ref-based approach to avoid stale closures.
-    registry.activateTriggers(() => {
-      setStep((current) => {
-        if (current !== 'idle') return current;
-        return 'triggered';
+    let cancelled = false;
+
+    const activateAll = async () => {
+      if (cancelled) return;
+      await registry.activateTriggers(() => {
+        setStep((current) => {
+          if (current !== 'idle') return current;
+          return 'triggered';
+        });
       });
-    });
+    };
+
+    activateAll();
 
     return () => {
+      cancelled = true;
       registry.deactivateTriggers();
       consoleInterceptor.uninstall();
       registry.clear();
