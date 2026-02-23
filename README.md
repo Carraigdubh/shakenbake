@@ -87,6 +87,8 @@ Requires Expo development build (not Expo Go) for native dependencies:
 npx expo install react-native-shake react-native-view-shot @shopify/react-native-skia
 ```
 
+> **Note:** `@shopify/react-native-skia` is an open-source 2D graphics library maintained by Shopify — it's not a Shopify product or service. ShakeNbake uses it for high-performance 60fps annotation drawing on mobile.
+
 ### Wrap your app
 
 ```tsx
