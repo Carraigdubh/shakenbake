@@ -265,6 +265,48 @@ examples/
   expo-app/          # Expo example
 ```
 
+## Troubleshooting
+
+### React Native: `react-native-shake` not autolinking (Expo monorepos)
+
+If shake detection doesn't work and you see no errors in the console, `react-native-shake` may not be autolinking correctly. This is a known issue with its package.json `exports` field in monorepo setups.
+
+**Fix:** Create a `react-native.config.js` in your app root:
+
+```js
+// react-native.config.js
+const path = require('path');
+
+module.exports = {
+  dependencies: {
+    'react-native-shake': {
+      root: path.resolve(__dirname, 'node_modules/react-native-shake'),
+    },
+  },
+};
+```
+
+Then rebuild your dev client:
+
+```bash
+npx expo prebuild --clean
+npx expo run:ios  # or run:android
+```
+
+### React Native: "react-native-shake is required but not installed"
+
+You need a development build — Expo Go doesn't support native modules:
+
+```bash
+npx expo install react-native-shake react-native-view-shot @shopify/react-native-skia
+npx expo prebuild
+npx expo run:ios
+```
+
+### Web: Screenshots don't capture cross-origin iframes
+
+This is a limitation of `html2canvas` — it can only capture same-origin content. Cross-origin iframes and `backdrop-filter` CSS will appear blank in screenshots.
+
 ## Security
 
 - **Web**: Server-side proxy pattern keeps Linear API key off the client bundle
