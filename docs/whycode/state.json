@@ -1,16 +1,16 @@
 {
-  "status": "complete",
-  "currentPhase": 8,
+  "status": "in_progress",
+  "currentPhase": 5,
   "currentPlan": null,
-  "loopMaxIterations": 30,
+  "loopMaxIterations": 20,
   "completionMode": "strict",
   "agentTeamsMode": "turbo-teams",
-  "runId": "2026-02-20T13-45-06Z",
-  "lastUpdatedAt": "2026-02-20T20:45:00Z",
+  "runId": "2026-02-23T14-50-00Z",
+  "lastUpdatedAt": "2026-02-23T14:50:00Z",
   "integrations": {
     "linearEnabled": true,
     "linearMethod": "api",
-    "linearTeamId": "bcca4298-4b53-4060-9b3f-0e01e41b41dd",
+    "linearTeamId": "647cf1e6-4c6a-43b7-acb1-fcbb4aa0c091",
     "context7Enabled": false
   }
 }

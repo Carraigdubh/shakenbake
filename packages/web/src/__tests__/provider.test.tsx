@@ -218,11 +218,14 @@ describe('ShakeNbakeProvider', () => {
     expect(fab).toBeNull();
   });
 
-  it('shows FAB when config.ui.showFAB is true', () => {
+  it('shows FAB when config.ui.showFAB is true', async () => {
     const config = createConfig({
       ui: { showFAB: true, position: 'bottom-right' },
     });
     ({ container, root } = renderProvider(config));
+
+    // Flush microtasks from async activateTriggers
+    await act(async () => {});
 
     const fab = document.body.querySelector('[aria-label="Report a bug"]');
     expect(fab).not.toBeNull();
@@ -236,11 +239,14 @@ describe('ShakeNbakeProvider', () => {
     expect(fab).toBeNull();
   });
 
-  it('cleans up triggers and FAB on unmount', () => {
+  it('cleans up triggers and FAB on unmount', async () => {
     const config = createConfig({
       ui: { showFAB: true },
     });
     ({ container, root } = renderProvider(config));
+
+    // Flush microtasks from async activateTriggers
+    await act(async () => {});
 
     // FAB should exist.
     expect(document.body.querySelector('[aria-label="Report a bug"]')).not.toBeNull();

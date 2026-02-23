@@ -34,24 +34,14 @@ export class PluginRegistry {
     return Array.from(this.triggerMap.values());
   }
 
-  activateTriggers(onTrigger: () => void): void {
+  async activateTriggers(onTrigger: () => void): Promise<void> {
     for (const trigger of this.triggerMap.values()) {
       try {
-        // Some triggers (e.g. ShakeTrigger) have async activate() that returns
-        // a Promise. Catch rejections so they surface instead of being swallowed.
-        const result: unknown = trigger.activate(onTrigger);
-        if (result && typeof (result as Promise<void>).catch === 'function') {
-          (result as Promise<void>).catch((err: unknown) => {
-            console.error(
-              `[ShakeNbake] Trigger "${trigger.name}" failed to activate:`,
-              err instanceof Error ? err.message : err,
-            );
-          });
-        }
-      } catch (err: unknown) {
+        await trigger.activate(onTrigger);
+      } catch (err) {
         console.error(
-          `[ShakeNbake] Trigger "${trigger.name}" failed to activate:`,
-          err instanceof Error ? err.message : err,
+          `[PluginRegistry] Trigger "${trigger.name}" activation failed:`,
+          err,
         );
       }
     }

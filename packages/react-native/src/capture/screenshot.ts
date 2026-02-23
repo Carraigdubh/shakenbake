@@ -19,6 +19,7 @@ type CaptureRefFn = (
     result?: 'base64' | 'tmpfile' | 'data-uri';
     width?: number;
     height?: number;
+    handleGLSurfaceViewOnAndroid?: boolean;
   },
 ) => Promise<string>;
 
@@ -86,8 +87,9 @@ export class ViewShotCapture implements CapturePlugin {
       );
     }
 
-    // --- resolve dimensions ---
+    // --- resolve dimensions & platform ---
     let dimensions: DimensionValue = { width: 0, height: 0 };
+    let isAndroid = false;
     try {
       const rn = await import('react-native');
       const Dimensions = (rn as Record<string, unknown>)['Dimensions'] as
@@ -95,6 +97,12 @@ export class ViewShotCapture implements CapturePlugin {
         | undefined;
       if (Dimensions) {
         dimensions = Dimensions.get('window');
+      }
+      const PlatformMod = (rn as Record<string, unknown>)['Platform'] as
+        | { OS: string }
+        | undefined;
+      if (PlatformMod) {
+        isAndroid = PlatformMod.OS === 'android';
       }
     } catch {
       // react-native not available in test; dimensions stay at 0x0
@@ -113,6 +121,7 @@ export class ViewShotCapture implements CapturePlugin {
         format: 'png',
         quality: 1,
         result: 'base64',
+        ...(isAndroid && { handleGLSurfaceViewOnAndroid: true }),
       });
 
       return {

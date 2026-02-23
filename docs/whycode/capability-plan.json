@@ -1,86 +1,54 @@
 {
-  "status": "full_coverage",
+  "status": "ok",
   "detectedStack": [
-    "typescript",
-    "react",
-    "react-native",
-    "expo",
-    "nextjs",
-    "turborepo",
-    "graphql",
-    "clerk",
-    "vercel",
-    "postgres",
-    "prisma",
-    "stripe",
-    "openai-whisper",
-    "skia",
-    "html2canvas",
-    "media-recorder",
-    "jest",
-    "lint"
+    "TypeScript",
+    "React",
+    "React Native",
+    "Expo 52+",
+    "Turborepo",
+    "react-native-shake",
+    "react-native-view-shot",
+    "@shopify/react-native-skia"
   ],
   "convexContext": {
     "mode": "not-applicable",
     "evidence": [
-      "No convex dependency detected in project",
-      "No convex/ folder referenced in architecture",
-      "No .env.local with CONVEX_DEPLOYMENT marker"
+      "This run scope: @shakenbake/core and @shakenbake/react-native packages only",
+      "No Convex dependency in scope",
+      "No Convex folder or configuration detected",
+      "Cloud app (apps/cloud) with Convex is NOT part of this run",
+      "Run focus: async trigger activation, provider fixes, Android GL compatibility"
     ]
   },
   "deploymentContext": {
-    "mode": "vercel-cli",
+    "mode": "unknown",
     "vercelCliAvailable": false,
     "githubIntegrationDetected": false,
     "evidence": [
-      "Cloud app (apps/cloud) targets Vercel deployment",
-      "Architecture specifies 'apps/cloud — Next.js on Vercel'",
-      "No .github/workflows detected for GitHub auto-deploy",
-      "No .vercel/ or vercel.json found in pre-code phase",
-      "Web app assumes Vercel deployment as reference platform"
+      "This run scope: development of @shakenbake/core and @shakenbake/react-native packages",
+      "No deployment actions required for this run",
+      "Cloud app deployment (apps/cloud to Vercel) is out of scope for this run",
+      "Focus: library code quality, async correctness, cross-platform compatibility"
     ]
   },
   "routingPlan": [
     {
-      "surface": "frontend-web",
-      "recommendedAgent": "whycode:frontend-web-agent",
-      "reason": "Next.js/React web SDK (@shakenbake/web) with html2canvas, Canvas annotation, keyboard triggers, and React Provider pattern. Web package is core to MVP."
+      "surface": "backend",
+      "recommendedAgent": "whycode:backend-agent",
+      "reason": "Core TypeScript types and plugin system (@shakenbake/core). Generic backend agent handles TypeScript compilation, plugin registry refactoring, and type definitions."
     },
     {
       "surface": "frontend-native",
       "recommendedAgent": "whycode:frontend-native-agent",
-      "reason": "Expo/React Native SDK (@shakenbake/react-native) with shake triggers, react-native-view-shot, @shopify/react-native-skia annotation, and expo-av audio. Development builds required."
-    },
-    {
-      "surface": "backend",
-      "recommendedAgent": "whycode:backend-agent",
-      "reason": "Core plugin system (@shakenbake/core) provides shared types, plugin interfaces, and report builder. Linear GraphQL adapter (@shakenbake/linear) handles issue creation. General backend agent recommended for non-specialized work."
-    },
-    {
-      "surface": "backend",
-      "recommendedAgent": "whycode:backend-auth-agent",
-      "reason": "Clerk authentication for Cloud app (apps/cloud) multi-tenant organization support. Specialist agent for auth patterns, scopes, and security model."
-    },
-    {
-      "surface": "deploy",
-      "recommendedAgent": "whycode:deploy-vercel-agent",
-      "reason": "Cloud app targets Vercel as reference deployment platform. Multi-package monorepo publish strategy will need Vercel deployment awareness for serverless functions and Blob storage."
+      "reason": "SPECIALIST RECOMMENDED: React Native SDK (@shakenbake/react-native) with Expo, react-native-shake, react-native-view-shot, @shopify/react-native-skia. Specialist agent for mobile runtime correctness, async trigger handling, Android GL surface compatibility, Skia drawing patterns."
     },
     {
       "surface": "shared",
-      "recommendedAgent": "whycode:backend-agent",
-      "reason": "Turborepo monorepo coordination, TypeScript base config, shared types (@shakenbake/core), and changesets release workflow. Generic backend agent suitable for build tooling."
+      "recommendedAgent": "whycode:test-agent",
+      "reason": "Vitest-based testing for both packages. Specialist TDD agent recommended for red-green-refactor protocol, test coverage validation."
     }
   ],
   "gaps": [],
   "recommendedAction": "proceed",
-  "startupSelections": {
-    "completionMode": "strict",
-    "maxIterations": 30,
-    "speedMode": "turbo-teams",
-    "linearTeam": "Suisios (SUI)",
-    "runName": "ShakeNbake MVP Build",
-    "confirmedAt": "2026-02-20T18:30:00Z"
-  },
-  "notes": "FINAL CAPABILITY PLAN — FULL COVERAGE CONFIRMED. ShakeNbake is a pre-code cross-platform bug reporting SDK in specification phase. All mandatory specialist agents available and confirmed during startup: whycode:frontend-web-agent (Next.js, React, html2canvas), whycode:frontend-native-agent (Expo, React Native, Skia), whycode:backend-agent (core types, plugin system, GraphQL adapter, Postgres/Prisma), whycode:backend-auth-agent (Clerk multi-tenant), whycode:deploy-vercel-agent (Vercel serverless). Convex not applicable (Postgres + Prisma used instead). No GitHub integration detected; Vercel CLI status unknown in pre-code phase but Vercel deployment is reference platform. Monorepo (Turborepo) coordinates 7 packages: core, react-native, web, linear, cloud-client, cloud (Next.js), examples. Key architecture: separate frontend SDKs for web and native (distinct platforms, Skia vs html2canvas); single backend for core + GraphQL + Linear; specialist auth for Clerk; specialist deploy for Vercel. Routing rules: frontend-web -> whycode:frontend-web-agent; frontend-native -> whycode:frontend-native-agent; backend/plugin system -> whycode:backend-agent; Clerk auth -> whycode:backend-auth-agent; Vercel deploy -> whycode:deploy-vercel-agent. Selected: completion mode strict (no partial deliverables), max 30 iterations, turbo-teams speed (parallel specialist agents), Linear team Suisios (SUI) for issue tracking. Ready to spawn specialist team."
+  "notes": "RUN SCOPE ANALYSIS: This execution targets two packages in isolation: (1) @shakenbake/core - make trigger activation async in PluginRegistry.activateTriggers(), update types in plugin interface if needed; (2) @shakenbake/react-native - update ShakeNbakeProvider.tsx to await async trigger activation, add Android GL/Skia view-shot compatibility in screenshot.ts, document react-native-shake autolinking workaround. TECH STACK DETECTED: TypeScript 5.8+, React 18+, React Native 0.76+, Expo SDK 52+ with development builds (not Expo Go). Peer dependencies: react-native-shake (optional), react-native-view-shot (optional), @shopify/react-native-skia (optional). SPECIALIST ROUTING: (1) Backend agent for @shakenbake/core plugin registry refactoring; (2) Frontend-native agent for @shakenbake/react-native async provider logic and Android GL compatibility. Test agent for Vitest-based validation. NO CONVEX/CLERK/VERCEL/CLOUD in scope. NO deployment actions needed. DEPENDENCY NOTES: Both packages use TypeScript without external type stubs - types defined locally inline. react-native-view-shot captured via dynamic import with error handling. All async functions properly wrapped in try-catch. CONTEXT AVAILABILITY: Loop-state files in docs/whycode/runs/ - check for previous iteration state if this is continuation. git log available for seeing previous commits. MANDATORY CHECKS: All tasks must pass typecheck (tsc --noEmit), lint (vitest placeholder), test (vitest run), and build (tsc) before claiming completion."
 }

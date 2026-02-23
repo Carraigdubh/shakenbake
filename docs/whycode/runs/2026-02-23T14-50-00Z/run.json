@@ -1,0 +1,22 @@
+{
+  "runId": "2026-02-23T14-50-00Z",
+  "startedAt": "2026-02-23T14:50:00Z",
+  "version": "3.0.0",
+  "flags": [],
+  "name": "Trigger & Screenshot Fixes",
+  "completionMode": "strict",
+  "runType": "new",
+  "parentRunId": null,
+  "branch": "whycode/trigger-screenshot-fixes-2026-02-23T14-50-00Z",
+  "baseBranch": "main",
+  "events": [
+    {
+      "type": "new",
+      "timestamp": "2026-02-23T14:50:00Z",
+      "summary": "new initialized",
+      "meta": {
+        "completionMode": "strict"
+      }
+    }
+  ]
+}

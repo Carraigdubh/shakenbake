@@ -1,0 +1,16 @@
+{
+  "status": "complete",
+  "currentPhase": 8,
+  "currentPlan": null,
+  "loopMaxIterations": 30,
+  "completionMode": "strict",
+  "agentTeamsMode": "turbo-teams",
+  "runId": "2026-02-20T13-45-06Z",
+  "lastUpdatedAt": "2026-02-20T20:45:00Z",
+  "integrations": {
+    "linearEnabled": true,
+    "linearMethod": "api",
+    "linearTeamId": "bcca4298-4b53-4060-9b3f-0e01e41b41dd",
+    "context7Enabled": false
+  }
+}

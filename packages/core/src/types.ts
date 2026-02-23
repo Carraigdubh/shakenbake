@@ -206,7 +206,7 @@ export interface SubmitResult {
 export interface TriggerPlugin {
   name: string;
   platform: Platform;
-  activate(onTrigger: () => void): void;
+  activate(onTrigger: () => void): void | Promise<void>;
   deactivate(): void;
 }
 
