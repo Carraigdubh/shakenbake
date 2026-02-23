@@ -235,6 +235,110 @@ describe('PluginRegistry', () => {
     });
   });
 
+  // ---- Async activateTriggers ----
+  describe('async activateTriggers', () => {
+    it('awaits async triggers in registration order', async () => {
+      const registry = new PluginRegistry();
+      const callOrder: string[] = [];
+
+      const t1: TriggerPlugin = {
+        name: 'async-first',
+        platform: 'universal',
+        activate: vi.fn(async () => {
+          await new Promise((r) => setTimeout(r, 10));
+          callOrder.push('first');
+        }),
+        deactivate: vi.fn(),
+      };
+
+      const t2: TriggerPlugin = {
+        name: 'async-second',
+        platform: 'universal',
+        activate: vi.fn(async () => {
+          await new Promise((r) => setTimeout(r, 5));
+          callOrder.push('second');
+        }),
+        deactivate: vi.fn(),
+      };
+
+      registry.registerTrigger(t1);
+      registry.registerTrigger(t2);
+
+      const onTrigger = vi.fn();
+      await registry.activateTriggers(onTrigger);
+
+      expect(t1.activate).toHaveBeenCalledWith(onTrigger);
+      expect(t2.activate).toHaveBeenCalledWith(onTrigger);
+      expect(callOrder).toEqual(['first', 'second']);
+    });
+
+    it('logs and continues when one trigger fails', async () => {
+      const registry = new PluginRegistry();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const failing: TriggerPlugin = {
+        name: 'broken-trigger',
+        platform: 'universal',
+        activate: vi.fn(async () => {
+          throw new Error('activation boom');
+        }),
+        deactivate: vi.fn(),
+      };
+
+      const succeeding: TriggerPlugin = {
+        name: 'good-trigger',
+        platform: 'universal',
+        activate: vi.fn(async () => {}),
+        deactivate: vi.fn(),
+      };
+
+      registry.registerTrigger(failing);
+      registry.registerTrigger(succeeding);
+
+      const onTrigger = vi.fn();
+      await registry.activateTriggers(onTrigger);
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[PluginRegistry] Trigger "broken-trigger" activation failed:',
+        expect.any(Error),
+      );
+      expect(succeeding.activate).toHaveBeenCalledWith(onTrigger);
+
+      errorSpy.mockRestore();
+    });
+
+    it('handles mix of sync and async triggers', async () => {
+      const registry = new PluginRegistry();
+
+      const syncTrigger: TriggerPlugin = {
+        name: 'sync-trigger',
+        platform: 'universal',
+        activate: vi.fn(() => {
+          // returns void (synchronous)
+        }),
+        deactivate: vi.fn(),
+      };
+
+      const asyncTrigger: TriggerPlugin = {
+        name: 'async-trigger',
+        platform: 'universal',
+        activate: vi.fn(async () => {
+          await new Promise((r) => setTimeout(r, 5));
+        }),
+        deactivate: vi.fn(),
+      };
+
+      registry.registerTrigger(syncTrigger);
+      registry.registerTrigger(asyncTrigger);
+
+      const onTrigger = vi.fn();
+      await registry.activateTriggers(onTrigger);
+
+      expect(syncTrigger.activate).toHaveBeenCalledWith(onTrigger);
+      expect(asyncTrigger.activate).toHaveBeenCalledWith(onTrigger);
+    });
+  });
+
   // ---- Clear ----
   describe('clear()', () => {
     it('removes all triggers, capture plugins, and collectors', () => {
