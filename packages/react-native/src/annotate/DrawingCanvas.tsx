@@ -269,7 +269,7 @@ function Toolbar({
 
   return React.createElement(
     View,
-    { style: styles.container, pointerEvents: 'box-none' },
+    { style: styles.container, pointerEvents: 'auto' },
     // Row 1: Tool selection
     React.createElement(
       View,
@@ -424,9 +424,35 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
   useEffect(() => {
     if (!skia || !screenshot) return;
     try {
-      const data = skia.Skia.Data.fromBase64(screenshot);
-      const img = skia.makeImageFromEncoded(data);
-      setBackgroundImage(img);
+      // Strip data-uri prefix if present (e.g. "data:image/png;base64,...")
+      const commaIndex = screenshot.indexOf(',');
+      const rawBase64 = commaIndex >= 0 ? screenshot.substring(commaIndex + 1) : screenshot;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const skiaAny = skia as any;
+
+      // Resolve fromBase64 — handle different Skia API shapes
+      const fromBase64Fn: ((b64: string) => SkiaData) | undefined =
+        skiaAny?.Skia?.Data?.fromBase64 ?? skiaAny?.Data?.fromBase64;
+
+      if (typeof fromBase64Fn !== 'function') {
+        throw new Error('Skia.Data.fromBase64 not available');
+      }
+
+      const data = fromBase64Fn(rawBase64);
+
+      // Resolve makeImageFromEncoded — handle different Skia API shapes
+      const decodeFn: ((d: SkiaData) => SkiaImage | null) | undefined =
+        skiaAny?.makeImageFromEncoded ??
+        skiaAny?.Skia?.Image?.MakeImageFromEncoded ??
+        skiaAny?.Image?.MakeImageFromEncoded;
+
+      if (typeof decodeFn !== 'function') {
+        throw new Error('Skia image decode API not available');
+      }
+
+      const img = decodeFn(data);
+      setBackgroundImage(img ?? null);
     } catch {
       // If decoding fails, we proceed without a background
       setBackgroundImage(null);
@@ -644,7 +670,7 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
               y: 0,
               width: dimensions.width,
               height: dimensions.height,
-              fit: 'contain',
+              fit: 'fill',
             })
           : null,
         // All drawing operations

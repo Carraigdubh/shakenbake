@@ -33,15 +33,50 @@ import { buildIssueDescription } from './markdown.js';
  */
 export class LinearAdapter implements DestinationAdapter {
   readonly name = 'linear';
+  private static hasWarnedMissingProjectId = false;
 
   private readonly config: LinearConfig;
   private readonly apiUrl: string;
   private readonly severityMapping: Record<string, number>;
 
   constructor(config: LinearConfig) {
-    this.config = config;
+    const normalizedApiKey = config.apiKey.trim();
+    const normalizedTeamId = config.teamId.trim();
+    const normalizedProjectId = config.projectId?.trim();
+
+    if (normalizedApiKey.length === 0) {
+      throw new ShakeNbakeError(
+        'LinearAdapter requires a non-empty apiKey',
+        'UNKNOWN',
+        { retryable: false },
+      );
+    }
+
+    if (normalizedTeamId.length === 0) {
+      throw new ShakeNbakeError(
+        'LinearAdapter requires a non-empty teamId',
+        'UNKNOWN',
+        { retryable: false },
+      );
+    }
+
+    this.config = {
+      ...config,
+      apiKey: normalizedApiKey,
+      teamId: normalizedTeamId,
+      ...(normalizedProjectId ? { projectId: normalizedProjectId } : {}),
+    };
     this.apiUrl = config.apiUrl ?? DEFAULT_API_URL;
     this.severityMapping = config.severityMapping ?? DEFAULT_SEVERITY_MAPPING;
+
+    if (!this.config.projectId && !LinearAdapter.hasWarnedMissingProjectId) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[ShakeNbake][LinearAdapter] No projectId configured for team "${this.config.teamId}". ` +
+          'Linear will assign issues to the team default/backlog project.',
+      );
+      LinearAdapter.hasWarnedMissingProjectId = true;
+    }
   }
 
   /**

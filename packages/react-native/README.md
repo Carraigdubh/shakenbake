@@ -38,6 +38,7 @@ import { LinearAdapter } from '@shakenbake/linear';
 const linear = new LinearAdapter({
   apiKey: process.env.LINEAR_API_KEY!,
   teamId: 'YOUR_TEAM_ID',
+  projectId: 'YOUR_PROJECT_ID', // recommended to avoid default/backlog routing
 });
 
 export default function App() {

@@ -6,7 +6,7 @@
 // independently without any Skia or React Native dependencies.
 // ---------------------------------------------------------------------------
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   DrawingOperation,
   DrawingTool,
@@ -89,6 +89,23 @@ export function useDrawingOperations(): [
 
   const strokeWidth = STROKE_WIDTHS[strokeSize];
 
+  // Refs to avoid stale closures in PanResponder touch callbacks
+  const toolRef = useRef(tool);
+  const colorRef = useRef(color);
+  const strokeWidthRef = useRef(strokeWidth);
+
+  useEffect(() => {
+    toolRef.current = tool;
+  }, [tool]);
+
+  useEffect(() => {
+    colorRef.current = color;
+  }, [color]);
+
+  useEffect(() => {
+    strokeWidthRef.current = strokeWidth;
+  }, [strokeWidth]);
+
   // ---- Tool / Color / Size setters ----
 
   const setTool = useCallback((newTool: DrawingTool) => {
@@ -107,18 +124,21 @@ export function useDrawingOperations(): [
 
   const startOperation = useCallback(
     (point: Point) => {
+      const liveTool = toolRef.current;
+      const liveColor = colorRef.current;
+      const liveStrokeWidth = strokeWidthRef.current;
       const op: DrawingOperation = {
         id: nextIdRef.current++,
-        tool,
-        color,
-        strokeWidth,
-        ...(tool === 'pen' || tool === 'eraser'
+        tool: liveTool,
+        color: liveColor,
+        strokeWidth: liveStrokeWidth,
+        ...(liveTool === 'pen' || liveTool === 'eraser'
           ? { points: [point] }
           : { startPoint: point, endPoint: point }),
       };
       setCurrentOperation(op);
     },
-    [tool, color, strokeWidth],
+    [],
   );
 
   const continueOperation = useCallback(
