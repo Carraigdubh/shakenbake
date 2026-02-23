@@ -40,6 +40,7 @@ import { LinearAdapter } from '@shakenbake/linear';
 const adapter = new LinearAdapter({
   apiKey: process.env.LINEAR_API_KEY!,
   teamId: 'your-linear-team-id',
+  projectId: 'your-linear-project-id', // recommended to avoid default/backlog routing
 });
 
 export async function POST(req: Request) {
@@ -99,6 +100,7 @@ import { LinearAdapter } from '@shakenbake/linear';
 const adapter = new LinearAdapter({
   apiKey: process.env.EXPO_PUBLIC_LINEAR_API_KEY!,
   teamId: 'your-linear-team-id',
+  projectId: 'your-linear-project-id', // recommended to avoid default/backlog routing
 });
 
 export default function App() {

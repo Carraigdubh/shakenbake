@@ -124,6 +124,28 @@ describe('LinearAdapter', () => {
   // == Constructor & Properties ==
 
   describe('constructor', () => {
+    it('throws on empty apiKey', () => {
+      expect(
+        () =>
+          new LinearAdapter(
+            makeConfig({
+              apiKey: '   ',
+            }),
+          ),
+      ).toThrow('LinearAdapter requires a non-empty apiKey');
+    });
+
+    it('throws on empty teamId', () => {
+      expect(
+        () =>
+          new LinearAdapter(
+            makeConfig({
+              teamId: '   ',
+            }),
+          ),
+      ).toThrow('LinearAdapter requires a non-empty teamId');
+    });
+
     it('stores config correctly', () => {
       const config = makeConfig({ projectId: 'proj-1' });
       const adapter = new LinearAdapter(config);
@@ -272,6 +294,20 @@ describe('LinearAdapter', () => {
         variables: { input: { teamId: string } };
       };
       expect(body.variables.input.teamId).toBe('my-team');
+    });
+
+    it('trims teamId and projectId before issue creation', async () => {
+      mockSuccessfulIssueCreation();
+      const adapter = new LinearAdapter(
+        makeConfig({ teamId: '  team-trim  ', projectId: '  proj-trim  ' }),
+      );
+      await adapter.createIssue(makeReport());
+
+      const body = getCallBody(fetchMock.mock.calls, 4) as {
+        variables: { input: { teamId: string; projectId: string } };
+      };
+      expect(body.variables.input.teamId).toBe('team-trim');
+      expect(body.variables.input.projectId).toBe('proj-trim');
     });
 
     it('builds markdown description with screenshot URLs', async () => {

@@ -117,12 +117,17 @@ export class ViewShotCapture implements CapturePlugin {
     }
 
     try {
-      const base64 = await captureRef(this.viewRef, {
-        format: 'png',
-        quality: 1,
-        result: 'base64',
-        ...(isAndroid && { handleGLSurfaceViewOnAndroid: true }),
-      });
+      const base64 = await Promise.race([
+        captureRef(this.viewRef, {
+          format: 'png',
+          quality: 1,
+          result: 'base64',
+          ...(isAndroid && { handleGLSurfaceViewOnAndroid: true }),
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('captureRef timeout after 8s')), 8000),
+        ),
+      ]);
 
       return {
         imageData: base64,

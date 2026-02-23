@@ -214,7 +214,8 @@ export function ShakeNbakeProvider(
   useEffect(() => {
     if (flowState.step !== 'triggered') return;
 
-    let cancelled = false;
+    let captureTimer: ReturnType<typeof setTimeout> | null = null;
+    let contextTimer: ReturnType<typeof setTimeout> | null = null;
 
     async function captureAndCollect(): Promise<void> {
       dispatch({ type: 'CAPTURE_START' });
@@ -226,12 +227,26 @@ export function ShakeNbakeProvider(
           return;
         }
 
-        const [captureResult, context] = await Promise.all([
+        const captureWithTimeout = Promise.race([
           builder.startCapture(),
-          builder.collectContext(),
+          new Promise<never>((_, reject) => {
+            captureTimer = setTimeout(() => {
+              reject(new Error('Screenshot capture timed out after 12s'));
+            }, 12000);
+          }),
         ]);
 
-        if (cancelled) return;
+        const contextWithFallback = Promise.race([
+          builder.collectContext(),
+          new Promise<Partial<DeviceContext>>((resolve) => {
+            contextTimer = setTimeout(() => resolve({}), 4000);
+          }),
+        ]);
+
+        const [captureResult, context] = await Promise.all([
+          captureWithTimeout,
+          contextWithFallback,
+        ]);
 
         dispatch({
           type: 'CAPTURE_DONE',
@@ -239,19 +254,17 @@ export function ShakeNbakeProvider(
           context,
         });
       } catch (err) {
-        if (cancelled) return;
         dispatch({
           type: 'CAPTURE_ERROR',
           error: err instanceof Error ? err.message : 'Capture failed',
         });
+      } finally {
+        if (captureTimer) clearTimeout(captureTimer);
+        if (contextTimer) clearTimeout(contextTimer);
       }
     }
 
     void captureAndCollect();
-
-    return () => {
-      cancelled = true;
-    };
   }, [flowState.step, dispatch]);
 
   // ---- Annotation done handler ----
@@ -419,10 +432,30 @@ export function ShakeNbakeProvider(
     });
   }
 
+  // Wrap overlay in an absolute-positioned container for proper z-stacking on RN
+  const overlayContainer = overlay && rn
+    ? React.createElement(
+        rn.View,
+        {
+          pointerEvents: 'box-none' as const,
+          style: {
+            position: 'absolute' as const,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            elevation: 9999,
+          },
+        },
+        overlay,
+      )
+    : overlay;
+
   return React.createElement(
     ShakeNbakeContext.Provider,
     { value: contextValue },
     wrapperElement,
-    overlay,
+    overlayContainer,
   );
 }
