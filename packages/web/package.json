@@ -1,6 +1,6 @@
 {
   "name": "@shakenbake/web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,7 +23,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@shakenbake/core": "0.0.1",
+    "@shakenbake/core": "0.0.3",
     "html2canvas-pro": "^1.5.0"
   },
   "peerDependencies": {
