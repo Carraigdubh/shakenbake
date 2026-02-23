@@ -1,0 +1,39 @@
+{
+  "planId": "fix-02",
+  "planName": "Android Screenshot & Documentation",
+  "agentType": "general-purpose",
+  "maxIterations": 20,
+  "currentIteration": 1,
+  "status": "completed",
+  "currentRunId": "fix-02-1-2026-02-23T15-05-00Z",
+  "tasks": [
+    {
+      "id": "task-004",
+      "name": "Add handleGLSurfaceViewOnAndroid for Android view-shot",
+      "status": "done",
+      "lastVerified": "2026-02-23T15:10:00Z"
+    },
+    {
+      "id": "task-005",
+      "name": "Add react-native-shake autolinking workaround documentation",
+      "status": "done",
+      "lastVerified": "2026-02-23T15:10:30Z"
+    }
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "startedAt": "2026-02-23T15:05:00Z",
+      "completedAt": "2026-02-23T15:12:00Z",
+      "outcome": "PLAN_COMPLETE",
+      "tasksAttempted": ["task-004", "task-005"],
+      "verificationResult": {
+        "typecheck": "pass",
+        "build": "pass",
+        "test": "307/309 pass (2 pre-existing FAB failures in @shakenbake/web - unrelated)",
+        "smoke": "pass"
+      }
+    }
+  ],
+  "lastVerificationFailure": null
+}

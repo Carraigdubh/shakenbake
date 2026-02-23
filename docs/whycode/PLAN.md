@@ -1,6 +1,6 @@
-<plan id="02-02">
-  <name>Linear Adapter - File Upload</name>
-  <type>backend</type>
+<plan id="fix-02" linear-id="SHA-3">
+  <name>Android Screenshot &amp; Documentation</name>
+  <type>frontend</type>
   <phase>2</phase>
 
   <completion-contract>
@@ -29,7 +29,7 @@
   </pm-commands>
 
   <available-tools>
-    <linear enabled="false">Skip Linear updates</linear>
+    <linear enabled="true">Log to audit/log.md, orchestrator handles Linear updates</linear>
     <context7 enabled="false">Not available</context7>
   </available-tools>
 
@@ -38,99 +38,94 @@
     <check name="lint" command="yarn lint" required="true"/>
     <check name="test" command="yarn test" required="true"/>
     <check name="build" command="yarn build" required="true"/>
-    <check name="smoke" command="node -e &quot;const l = require('./packages/linear/dist/index.js'); const a = new l.LinearAdapter({ apiKey: 'test', teamId: 'test' }); console.log('uploadImage:', typeof a.uploadImage, 'createIssue:', typeof a.createIssue, 'testConnection:', typeof a.testConnection);&quot;" required="true">
+    <check name="smoke" command="node -e &quot;const c = require('./packages/react-native/dist/index.js'); console.log('ViewShotCapture:', typeof c.ViewShotCapture);&quot;" required="true">
       <fail-if-contains>Error:</fail-if-contains>
-      <description>All LinearAdapter methods must be functions</description>
+      <description>ViewShotCapture must be exported and loadable</description>
     </check>
   </final-verification>
 
   <context>
-    Plans 01-01, 01-02, and 02-01 are COMPLETE. The Linear adapter already has:
-    - packages/linear/src/types.ts: LinearConfig
-    - packages/linear/src/graphql.ts: linearFetch, ISSUE_CREATE_MUTATION, VIEWER_QUERY, FILE_UPLOAD_MUTATION
-    - packages/linear/src/markdown.ts: buildIssueDescription
-    - packages/linear/src/adapter.ts: LinearAdapter with createIssue and testConnection
-    - 57 tests passing in packages/linear
+    Plan fix-01 is COMPLETE. The async trigger activation changes are committed.
 
-    This plan completes uploadImage (file upload via signed URL) and adds rate limiting + comprehensive error handling.
+    This plan addresses two remaining items:
+    1. Android GL/Skia screenshot compatibility via handleGLSurfaceViewOnAndroid option
+    2. Documentation for react-native-shake autolinking workaround in Expo monorepos
 
-    Discovery finding: Linear file upload is two-step:
-    1. fileUpload mutation → returns { uploadUrl, assetUrl }
-    2. PUT file to uploadUrl with correct headers
-    Upload URLs expire in ~60 seconds.
+    EXISTING CODE STATE:
+    - packages/react-native/src/capture/screenshot.ts has ViewShotCapture class
+    - The capture() method calls captureRef(this.viewRef, { format: 'png', quality: 1, result: 'base64' })
+    - CaptureRefFn type definition at line 14 does NOT include handleGLSurfaceViewOnAndroid
+    - No README.md exists in packages/react-native/
+    - React Native Platform module can detect Android via Platform.OS === 'android'
   </context>
 
   <tasks>
-    <task id="task-010" type="auto">
-      <name>Implement fileUpload mutation (signed URL flow)</name>
-      <files>packages/linear/src/graphql.ts, packages/linear/src/adapter.ts</files>
+    <task id="task-004" type="auto" linear-id="SHA-3">
+      <name>Add handleGLSurfaceViewOnAndroid for Android view-shot</name>
+      <files>packages/react-native/src/capture/screenshot.ts</files>
       <action>
-        Ensure FILE_UPLOAD_MUTATION is defined in graphql.ts:
-        mutation FileUpload($contentType: String!, $filename: String!, $size: Int!) {
-          fileUpload(contentType: $contentType, filename: $filename, size: $size) {
-            success
-            uploadFile { uploadUrl assetUrl headers { key value } }
-          }
-        }
+        1. Update the CaptureRefFn type definition to include handleGLSurfaceViewOnAndroid:
+           type CaptureRefFn = (
+             viewRef: number | RefObject&lt;unknown&gt;,
+             options?: {
+               format?: 'png' | 'jpg' | 'webm';
+               quality?: number;
+               result?: 'base64' | 'tmpfile' | 'data-uri';
+               width?: number;
+               height?: number;
+               handleGLSurfaceViewOnAndroid?: boolean;
+             },
+           ) =&gt; Promise&lt;string&gt;;
 
-        Add a helper function requestUploadUrl(apiKey, apiUrl, filename, contentType, size) that:
-        - Calls FILE_UPLOAD_MUTATION via linearFetch
-        - Returns { uploadUrl, assetUrl, headers }
-        - Throws ShakeNbakeError on failure
+        2. In the capture() method, detect Android platform and add the option:
+           Import Platform from react-native (use existing dynamic import pattern).
+           When calling captureRef, add handleGLSurfaceViewOnAndroid: true if Platform.OS === 'android'.
+
+           const isAndroid = /* detect via Platform.OS from dynamic import */;
+           const base64 = await captureRef(this.viewRef, {
+             format: 'png',
+             quality: 1,
+             result: 'base64',
+             ...(isAndroid &amp;&amp; { handleGLSurfaceViewOnAndroid: true }),
+           });
+
+        3. Use the existing dynamic import pattern for react-native (already imported for Dimensions).
+           Extract Platform.OS from the same import.
       </action>
-      <verify>cd packages/linear && npx tsc --noEmit</verify>
-      <done>requestUploadUrl function exists and compiles. FILE_UPLOAD_MUTATION is defined.</done>
+      <verify>cd packages/react-native &amp;&amp; npx tsc --noEmit</verify>
+      <done>captureRef call includes handleGLSurfaceViewOnAndroid: true on Android. CaptureRefFn type updated. TypeScript compiles clean.</done>
     </task>
 
-    <task id="task-011" type="auto">
-      <name>Implement uploadImage (PUT to signed URL)</name>
-      <files>packages/linear/src/adapter.ts</files>
+    <task id="task-005" type="auto" linear-id="SHA-3">
+      <name>Add react-native-shake autolinking workaround documentation</name>
+      <files>packages/react-native/README.md</files>
       <action>
-        Complete the uploadImage(imageData: Buffer | Blob, filename: string) method in LinearAdapter:
-        1. Determine content type from filename extension (png → image/png, jpg → image/jpeg, webm → audio/webm)
-        2. Determine size from imageData (Buffer.byteLength or Blob.size)
-        3. Call requestUploadUrl to get signed URL and asset URL
-        4. PUT imageData to uploadUrl with:
-           - Content-Type header
-           - Cache-Control: public, max-age=31536000
-           - Any additional headers from the fileUpload response
-        5. Return assetUrl string
-        6. Handle both Buffer (Node.js/RN) and Blob (browser) inputs
-        7. Wrap errors as ShakeNbakeError with UPLOAD_FAILED code
+        Create packages/react-native/README.md with:
+
+        1. Package overview: @shakenbake/react-native - React Native SDK for ShakeNbake bug reporting
+        2. Installation section with yarn/npm commands
+        3. Peer dependencies list (react-native-shake, react-native-view-shot, @shopify/react-native-skia)
+        4. Basic usage with ShakeNbakeProvider
+        5. Troubleshooting section with:
+           a. "react-native-shake autolinking in Expo monorepos" subsection:
+              - Explain that react-native-shake strict exports may break autolinking discovery in monorepo setups
+              - Provide react-native.config.js workaround snippet:
+                const path = require('path');
+                module.exports = {
+                  dependencies: {
+                    'react-native-shake': {
+                      root: path.resolve(__dirname, '../../node_modules/react-native-shake'),
+                    },
+                  },
+                };
+              - Note: rebuild required after adding native deps (npx expo prebuild --clean)
+              - Note: react-native-shake is not supported in Expo Go, requires development build
+           b. "Android GL/Skia screenshot capture" subsection:
+              - Explain that handleGLSurfaceViewOnAndroid is automatically enabled on Android
+              - This ensures screenshots work correctly when Skia, MapView, or other GL surfaces are present
       </action>
-      <verify>cd packages/linear && npx tsc --noEmit</verify>
-      <done>uploadImage is fully implemented. Handles Buffer and Blob. Calls requestUploadUrl then PUTs to signed URL. Returns assetUrl.</done>
-    </task>
-
-    <task id="task-012" type="auto">
-      <name>Add rate limiting, error handling, and unit tests</name>
-      <files>packages/linear/src/adapter.ts, packages/linear/src/__tests__/adapter.test.ts, packages/linear/src/__tests__/upload.test.ts</files>
-      <action>
-        Add rate limit handling:
-        - In linearFetch, check for HTTP 429 or GraphQL error with code RATELIMITED
-        - Throw ShakeNbakeError with RATE_LIMITED code (retryable: true)
-        - Check X-RateLimit-Remaining header if present
-
-        Ensure comprehensive error mapping:
-        - HTTP 401/403 → AUTH_FAILED (retryable: false)
-        - HTTP 429 → RATE_LIMITED (retryable: true)
-        - Network/fetch errors → NETWORK_ERROR (retryable: true)
-        - Upload PUT failures → UPLOAD_FAILED (retryable: false)
-
-        Add/update tests:
-        - Test uploadImage calls requestUploadUrl then PUTs to signed URL
-        - Test uploadImage returns assetUrl on success
-        - Test uploadImage handles Buffer input correctly
-        - Test uploadImage handles Blob input correctly
-        - Test uploadImage throws UPLOAD_FAILED on PUT failure
-        - Test rate limit detection (429 status → RATE_LIMITED error)
-        - Test auth failure (401 → AUTH_FAILED error)
-        - Test network error handling
-
-        All existing + new tests must pass.
-      </action>
-      <verify>cd packages/linear && npx vitest run</verify>
-      <done>Rate limiting detection works. Error codes are correctly mapped. 70+ tests in linear package. All tests pass.</done>
+      <verify>test -f packages/react-native/README.md &amp;&amp; echo "README exists"</verify>
+      <done>README.md created with installation, usage, and troubleshooting sections including react-native-shake autolinking workaround and Android GL note.</done>
     </task>
   </tasks>
 
@@ -139,9 +134,9 @@
     □ All task verify commands passed
     □ yarn typecheck passed (exit code 0)
     □ yarn lint passed (exit code 0)
-    □ yarn test passed (120+ total tests)
+    □ yarn test passed (all tests green)
     □ yarn build passed (exit code 0)
-    □ Smoke: LinearAdapter methods are all functions
+    □ Smoke: ViewShotCapture is exported and loadable
 
     If ANY failed: FIX and re-verify. Do NOT output PLAN_COMPLETE.
   </on-complete>

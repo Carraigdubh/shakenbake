@@ -1,0 +1,45 @@
+{
+  "planId": "fix-01",
+  "planName": "Async Trigger Activation",
+  "agentType": "general-purpose",
+  "maxIterations": 20,
+  "currentIteration": 1,
+  "status": "completed",
+  "currentRunId": "fix-01-1-2026-02-23T14-55-00Z",
+  "tasks": [
+    {
+      "id": "task-001",
+      "name": "Make activateTriggers async with per-trigger error handling",
+      "status": "done",
+      "lastVerified": "2026-02-23T18:16:00Z"
+    },
+    {
+      "id": "task-002",
+      "name": "Update ShakeNbakeProvider to await async trigger activation",
+      "status": "done",
+      "lastVerified": "2026-02-23T18:16:20Z"
+    },
+    {
+      "id": "task-003",
+      "name": "Add unit tests for async activateTriggers",
+      "status": "done",
+      "lastVerified": "2026-02-23T18:16:40Z"
+    }
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "startedAt": "2026-02-23T14:55:00Z",
+      "completedAt": "2026-02-23T18:17:00Z",
+      "outcome": "PLAN_COMPLETE",
+      "tasksAttempted": ["task-001", "task-002", "task-003"],
+      "verificationResult": {
+        "typecheck": "pass",
+        "build": "pass",
+        "test": "140/142 pass (2 pre-existing FAB failures in @shakenbake/web - unrelated)",
+        "smoke": "pass"
+      }
+    }
+  ],
+  "lastVerificationFailure": null
+}

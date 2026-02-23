@@ -9,6 +9,8 @@
   "parentRunId": null,
   "branch": "whycode/trigger-screenshot-fixes-2026-02-23T14-50-00Z",
   "baseBranch": "main",
+  "prUrl": "https://github.com/Carraigdubh/shakenbake/pull/1",
+  "completedAt": "2026-02-23T15:20:00Z",
   "events": [
     {
       "type": "new",
@@ -17,6 +19,11 @@
       "meta": {
         "completionMode": "strict"
       }
+    },
+    {
+      "type": "completed",
+      "timestamp": "2026-02-23T15:20:00Z",
+      "summary": "All plans complete. fix-01: async trigger activation (3 tasks). fix-02: Android screenshot GL fix + autolinking docs (2 tasks). PR #1 created."
     }
   ]
 }

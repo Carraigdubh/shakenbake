@@ -1,0 +1,15 @@
+{
+  "teamId": "647cf1e6-4c6a-43b7-acb1-fcbb4aa0c091",
+  "parentIssueId": "94b5f528-c372-42db-85bd-9d05827e0be7",
+  "parentIssueIdentifier": "SHA-1",
+  "planIssues": {
+    "fix-01": {
+      "issueId": "1831e428-77f5-470b-a213-90657113f239",
+      "issueIdentifier": "SHA-2"
+    },
+    "fix-02": {
+      "issueId": "9ecdd8d8-e360-4762-b145-2c7aac66fbf1",
+      "issueIdentifier": "SHA-3"
+    }
+  }
+}

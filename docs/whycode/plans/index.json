@@ -1,305 +1,51 @@
 {
-  "version": "0.1.0",
-  "generatedAt": "2026-02-20",
-  "buildOrder": "core -> linear -> web -> react-native -> examples -> mock-adapter",
+  "version": "0.2.0",
+  "generatedAt": "2026-02-23",
+  "runId": "2026-02-23T14-50-00Z",
+  "runName": "Trigger & Screenshot Fixes",
   "plans": [
     {
-      "id": "01-01",
-      "name": "Core Types & Plugin Interfaces",
+      "id": "fix-01",
+      "name": "Async Trigger Activation",
       "type": "backend",
       "phase": 1,
-      "package": "@shakenbake/core",
+      "packages": ["@shakenbake/core", "@shakenbake/react-native"],
       "dependsOn": [],
       "tasks": [
         {
           "id": "task-001",
-          "name": "Create TypeScript types and interfaces",
-          "description": "Define all shared types in packages/core/src/types.ts: BugReport, ShakeNbakeConfig, CaptureResult, DeviceContext (and all sub-interfaces: PlatformContext, DeviceInfo, ScreenInfo, NetworkInfo, BatteryInfo, LocaleInfo, AppInfo, AccessibilityInfo, PerformanceInfo, NavigationInfo, ConsoleInfo), ReportInput, SubmitResult. Define all four plugin interfaces: TriggerPlugin, CapturePlugin, ContextCollector, DestinationAdapter. Export everything from packages/core/src/index.ts."
+          "name": "Make activateTriggers async with per-trigger error handling",
+          "description": "Update TriggerPlugin.activate return type to void | Promise<void>. Change PluginRegistry.activateTriggers to async, await each trigger.activate(), log per-trigger failures without crashing the whole flow."
         },
         {
           "id": "task-002",
-          "name": "Create ShakeNbakeError class and error codes",
-          "description": "Create packages/core/src/errors.ts with ShakeNbakeError extending Error. Properties: code (union of AUTH_FAILED, RATE_LIMITED, UPLOAD_FAILED, NETWORK_ERROR, UNKNOWN), retryable (boolean), originalError (unknown optional). Add a static helper isRetryable(code) that returns true for NETWORK_ERROR and RATE_LIMITED. Export from index.ts."
+          "name": "Update ShakeNbakeProvider to await async trigger activation",
+          "description": "Remove manual trigger iteration from provider. Call await registry.activateTriggers(handleTrigger) inside an async IIFE in useEffect. Preserve cancellation flag and cleanup (deactivateTriggers)."
         },
         {
           "id": "task-003",
-          "name": "Create ReportBuilder class skeleton",
-          "description": "Create packages/core/src/report-builder.ts with ReportBuilder class. Constructor takes PluginRegistry and DestinationAdapter. Methods: startCapture() -> Promise<CaptureResult>, collectContext() -> Promise<DeviceContext>, build(input: ReportInput) -> BugReport (generates UUID, ISO timestamp, merges input with screenshot and context), submit(report: BugReport) -> Promise<SubmitResult> (calls uploadImage then createIssue). Stub implementations that throw 'not implemented' where registry is needed."
+          "name": "Add unit tests for async activateTriggers",
+          "description": "Test PluginRegistry.activateTriggers: awaits async triggers in order, logs and continues on one trigger failure, handles mix of sync and async triggers."
         }
       ]
     },
     {
-      "id": "01-02",
-      "name": "Core ReportBuilder & Plugin Registry",
-      "type": "backend",
-      "phase": 1,
-      "package": "@shakenbake/core",
-      "dependsOn": ["01-01"],
+      "id": "fix-02",
+      "name": "Android Screenshot & Documentation",
+      "type": "frontend",
+      "phase": 2,
+      "packages": ["@shakenbake/react-native"],
+      "dependsOn": ["fix-01"],
       "tasks": [
         {
           "id": "task-004",
-          "name": "Implement PluginRegistry",
-          "description": "Create packages/core/src/plugin-registry.ts. PluginRegistry class with: registerTrigger(plugin), registerCapture(plugin), registerCollector(plugin), getTriggers() -> TriggerPlugin[], getCapture() -> CapturePlugin | undefined, getCollectors() -> ContextCollector[], clear(). Internal storage as Maps keyed by plugin name to prevent duplicates. Export from index.ts."
+          "name": "Add handleGLSurfaceViewOnAndroid for Android view-shot",
+          "description": "In screenshot.ts captureRef call, add handleGLSurfaceViewOnAndroid: true on Android. Update CaptureRefFn type to include the option. Detect platform via React Native Platform module."
         },
         {
           "id": "task-005",
-          "name": "Implement ReportBuilder flow",
-          "description": "Complete ReportBuilder implementation. startCapture() gets CapturePlugin from registry and calls capture(). collectContext() iterates all registered ContextCollectors, calls collect() on each, merges results into DeviceContext. build() generates UUID via crypto.randomUUID (with fallback), ISO timestamp, and assembles full BugReport. submit() calls destination.uploadImage for annotated screenshot, then destination.createIssue with the report containing the image URL. Wrap submit in try/catch that converts errors to ShakeNbakeError."
-        },
-        {
-          "id": "task-006",
-          "name": "Add unit tests for core",
-          "description": "Create packages/core/src/__tests__/ with vitest tests. Test PluginRegistry: register/get/clear for all plugin types, duplicate name handling. Test ReportBuilder: build() produces valid BugReport with UUID and timestamp, startCapture() delegates to registered CapturePlugin, collectContext() merges multiple collectors, submit() calls uploadImage then createIssue on destination. Test ShakeNbakeError: constructor sets code/retryable/originalError, isRetryable helper. Use mock plugins and adapters."
-        }
-      ]
-    },
-    {
-      "id": "02-01",
-      "name": "Linear Adapter - Issue Creation",
-      "type": "backend",
-      "phase": 2,
-      "package": "@shakenbake/linear",
-      "dependsOn": ["01-02"],
-      "tasks": [
-        {
-          "id": "task-007",
-          "name": "Create LinearAdapter class implementing DestinationAdapter",
-          "description": "Create packages/linear/src/adapter.ts. LinearAdapter implements DestinationAdapter from @shakenbake/core. Constructor accepts LinearConfig: apiKey, teamId, projectId?, defaultLabelIds?, defaultAssigneeId?, defaultPriority?, severityMapping?, categoryLabels?. Store config and create internal graphql client helper. Name property returns 'linear'."
-        },
-        {
-          "id": "task-008",
-          "name": "Implement issueCreate via GraphQL",
-          "description": "Create packages/linear/src/graphql.ts with typed GraphQL query/mutation strings and a fetch-based client. Implement createIssue() in adapter: builds markdown description from BugReport using the issue description template (embedded screenshots, collapsible device context table, console errors). Calls issueCreate mutation with title, description, teamId, projectId, labelIds (from config + category mapping), assigneeId, priority (from severity mapping). Returns { url, id } from the response. Wraps errors as ShakeNbakeError with appropriate codes."
-        },
-        {
-          "id": "task-009",
-          "name": "Implement testConnection",
-          "description": "Implement testConnection() in LinearAdapter. Calls a lightweight GraphQL query (viewer { id }) to verify the API key is valid and the Linear API is reachable. Returns true on success, false on auth failure. Throws ShakeNbakeError with NETWORK_ERROR for connectivity issues. Add LinearConfig type export and package.json setup. Export adapter, config, and types from packages/linear/src/index.ts."
-        }
-      ]
-    },
-    {
-      "id": "02-02",
-      "name": "Linear Adapter - File Upload",
-      "type": "backend",
-      "phase": 2,
-      "package": "@shakenbake/linear",
-      "dependsOn": ["02-01"],
-      "tasks": [
-        {
-          "id": "task-010",
-          "name": "Implement fileUpload mutation (signed URL flow)",
-          "description": "Add fileUpload GraphQL mutation to graphql.ts. The mutation takes filename, contentType, and size, and returns uploadFile { uploadUrl, assetUrl }. Create a helper function requestUploadUrl(filename, contentType, size) that executes this mutation and returns { uploadUrl, assetUrl }."
-        },
-        {
-          "id": "task-011",
-          "name": "Implement uploadImage (PUT to signed URL)",
-          "description": "Implement uploadImage(imageData: Buffer | Blob, filename: string) in LinearAdapter. Steps: 1) Determine content type and size from imageData. 2) Call requestUploadUrl to get signed URL. 3) PUT imageData to the uploadUrl with correct Content-Type header. 4) Return the assetUrl. Handle both Buffer (Node/RN) and Blob (browser) inputs. Convert base64 to appropriate format if needed."
-        },
-        {
-          "id": "task-012",
-          "name": "Add rate limiting, error handling, and unit tests",
-          "description": "Add rate limit detection: check response headers for X-RateLimit-Remaining, throw ShakeNbakeError with RATE_LIMITED when exhausted. Map HTTP 401/403 to AUTH_FAILED, 429 to RATE_LIMITED, network errors to NETWORK_ERROR, upload failures to UPLOAD_FAILED. Create packages/linear/src/__tests__/ with vitest tests: mock fetch to test createIssue builds correct GraphQL payload, uploadImage follows signed URL flow, testConnection returns true/false correctly, error codes are mapped properly."
-        }
-      ]
-    },
-    {
-      "id": "03-01",
-      "name": "Web SDK - Triggers & Screenshot",
-      "type": "frontend",
-      "phase": 3,
-      "package": "@shakenbake/web",
-      "dependsOn": ["01-02"],
-      "tasks": [
-        {
-          "id": "task-013",
-          "name": "Create KeyboardTrigger and FABTrigger plugins",
-          "description": "Create packages/web/src/triggers/keyboard.ts: KeyboardTrigger implements TriggerPlugin. activate() registers a keydown listener for Cmd+Shift+K (Mac) / Ctrl+Shift+K (other). deactivate() removes the listener. Create packages/web/src/triggers/fab.tsx: FABTrigger implements TriggerPlugin and renders a floating action button. Configurable position (bottom-right, bottom-left). activate() makes FAB visible and wires click to onTrigger. deactivate() hides FAB."
-        },
-        {
-          "id": "task-014",
-          "name": "Create Html2CanvasCapture plugin",
-          "description": "Create packages/web/src/capture/screenshot.ts: Html2CanvasCapture implements CapturePlugin. capture() calls html2canvas-pro on document.body (or configured element) with options for scale, useCORS, logging. Converts resulting canvas to base64 PNG via toDataURL(). Returns CaptureResult { base64, width, height }. Handles errors gracefully (returns error state that lets user manually paste a screenshot)."
-        },
-        {
-          "id": "task-015",
-          "name": "Create BrowserContextCollector",
-          "description": "Create packages/web/src/context/collectors.ts: BrowserContextCollector implements ContextCollector. collect() gathers all browser context defined in PRD Section 6: platform (userAgent, browser, os from navigator.userAgentData), screen (dimensions, viewport, pixelRatio, orientation), network (online, effectiveType, downlink, rtt), battery (navigator.getBattery where supported), locale (languages, timezone), app (url, pathname, referrer, title), accessibility (prefers-reduced-motion, prefers-color-scheme, prefers-contrast), performance (pageLoadTime, FCP, LCP from Performance API), console (intercepted recent logs and errors). Returns merged DeviceContext."
-        }
-      ]
-    },
-    {
-      "id": "03-02",
-      "name": "Web SDK - Annotation Canvas",
-      "type": "frontend",
-      "phase": 3,
-      "package": "@shakenbake/web",
-      "dependsOn": ["03-01"],
-      "tasks": [
-        {
-          "id": "task-016",
-          "name": "Create AnnotationCanvas component with freehand drawing",
-          "description": "Create packages/web/src/annotate/DrawingCanvas.tsx: React component that renders an HTML5 Canvas element sized to the screenshot. Loads the captured screenshot as background image. Implements freehand pen tool: onMouseDown starts a path, onMouseMove adds points, onMouseUp completes the path. Supports color selection (red, yellow, blue, green, white, black) and adjustable stroke width. Stores drawing operations as an array for undo support. Handles both mouse and touch events."
-        },
-        {
-          "id": "task-017",
-          "name": "Add shape tools (rectangle, arrow, circle)",
-          "description": "Extend DrawingCanvas with shape tools. Rectangle: mousedown sets origin, mousemove shows preview, mouseup commits. Arrow: similar to rectangle but renders a line with arrowhead. Circle/oval: drawn from center or bounding box. Add a tool selector UI (toolbar) with icons for each tool: pen, rectangle, arrow, circle, eraser. Eraser removes the last operation that overlaps the click point. Add undo/redo buttons that push/pop from the operations array."
-        },
-        {
-          "id": "task-018",
-          "name": "Implement screenshot + annotation compositing",
-          "description": "Add a compositeImage() function to DrawingCanvas that flattens the screenshot background + all annotation operations into a single canvas and exports as base64 PNG. This is called when the user taps 'Done' or 'Next'. The original (unannotated) screenshot is preserved separately. Both are passed to ReportBuilder. Export AnnotationCanvas from the package."
-        }
-      ]
-    },
-    {
-      "id": "03-03",
-      "name": "Web SDK - Report Form & Provider",
-      "type": "frontend",
-      "phase": 3,
-      "package": "@shakenbake/web",
-      "dependsOn": ["03-02", "02-02"],
-      "tasks": [
-        {
-          "id": "task-019",
-          "name": "Create ReportForm component",
-          "description": "Create packages/web/src/ui/ReportForm.tsx: React component rendered as a modal/overlay. Contains: title input (required), description textarea (optional), severity picker (low/medium/high/critical), category picker (bug/ui/crash/performance/other), screenshot preview thumbnail (clickable to re-annotate), collapsible device context section (read-only). Submit and Cancel buttons. Form validation: title required, min 3 chars. Styled with CSS-in-JS or inline styles (zero external CSS dependencies). Supports light/dark/auto theme."
-        },
-        {
-          "id": "task-020",
-          "name": "Create ShakeNbakeProvider React component",
-          "description": "Create packages/web/src/ShakeNbakeProvider.tsx: React context provider. Accepts ShakeNbakeConfig prop. On mount: creates PluginRegistry, registers KeyboardTrigger + FABTrigger (if showFAB), registers Html2CanvasCapture, registers BrowserContextCollector, creates ReportBuilder. Activates triggers. On unmount: deactivates all triggers. Provides context: { trigger(), isOpen, currentStep, report }. Manages the full flow state machine: idle -> capturing -> annotating -> form -> submitting -> success/error. Renders AnnotationCanvas and ReportForm based on current state. Also export useShakeNbake() hook for programmatic trigger access."
-        },
-        {
-          "id": "task-021",
-          "name": "Integration tests and full flow wiring",
-          "description": "Create packages/web/src/__tests__/ with vitest + jsdom tests. Test full flow: trigger fires -> capture called -> annotation canvas shown -> form shown -> submit calls destination. Test KeyboardTrigger fires on Cmd+Shift+K. Test BrowserContextCollector returns expected shape. Test ReportForm validation (empty title rejected). Test ShakeNbakeProvider renders nothing when enabled=false. Create packages/web/src/index.ts exporting ShakeNbakeProvider, useShakeNbake, all trigger/capture/context classes, and ProxyAdapter (a simple DestinationAdapter that POSTs to a configured endpoint)."
-        }
-      ]
-    },
-    {
-      "id": "04-01",
-      "name": "React Native SDK - Triggers & Screenshot",
-      "type": "frontend",
-      "phase": 4,
-      "package": "@shakenbake/react-native",
-      "dependsOn": ["01-02"],
-      "tasks": [
-        {
-          "id": "task-022",
-          "name": "Create ShakeTrigger plugin",
-          "description": "Create packages/react-native/src/triggers/shake.ts: ShakeTrigger implements TriggerPlugin. activate() calls RNShake.addListener(onTrigger) from react-native-shake, stores the subscription. deactivate() calls subscription.remove(). Platform is 'react-native'. Name is 'shake'."
-        },
-        {
-          "id": "task-023",
-          "name": "Create ViewShotCapture plugin",
-          "description": "Create packages/react-native/src/capture/screenshot.ts: ViewShotCapture implements CapturePlugin. Holds a React ref to the capturable view. capture() calls captureRef(ref, { format: 'png', quality: 1, result: 'base64' }) from react-native-view-shot. Returns CaptureResult with base64 data, width, and height from Dimensions API. The ref is set by ShakeNbakeProvider wrapping children in a ViewShot component."
-        },
-        {
-          "id": "task-024",
-          "name": "Create DeviceContextCollector",
-          "description": "Create packages/react-native/src/context/collectors.ts: DeviceContextCollector implements ContextCollector. collect() gathers all RN context from PRD Section 5: platform (Platform.OS, Platform.Version, Constants), device (expo-device: manufacturer, model, modelId, deviceType, totalMemory), screen (Dimensions, PixelRatio, expo-screen-orientation), network (@react-native-community/netinfo + expo-network), battery (expo-battery: level, state, lowPowerMode), locale (expo-localization: languageCode, regionCode, timezone, isRTL), app (expo-constants: version, buildNumber, bundleId), accessibility (AccessibilityInfo: screenReader, reduceMotion, fontScale). Returns DeviceContext. Each sub-collector is wrapped in try/catch so a single failure does not break the entire collection."
-        }
-      ]
-    },
-    {
-      "id": "04-02",
-      "name": "React Native SDK - Skia Annotation",
-      "type": "frontend",
-      "phase": 4,
-      "package": "@shakenbake/react-native",
-      "dependsOn": ["04-01"],
-      "tasks": [
-        {
-          "id": "task-025",
-          "name": "Create SkiaAnnotationView component",
-          "description": "Create packages/react-native/src/annotate/DrawingCanvas.tsx: React Native component using @shopify/react-native-skia. Renders a Skia Canvas sized to screen. Loads the captured screenshot as a Skia Image background (useImage or makeImageFromEncoded from base64). Sets up the drawing surface with the screenshot as the first layer."
-        },
-        {
-          "id": "task-026",
-          "name": "Add touch drawing (freehand paths)",
-          "description": "Implement touch-based freehand drawing using Skia's useTouchHandler (or gesture handler). onStart begins a new SkPath at the touch point. onActive adds lineTo points as finger moves. onEnd completes the path. Each completed path is stored in a paths array with its color and stroke width. Render all paths on the Canvas using Path components with Paint (stroke style). Support color palette (red, yellow, blue, green, white, black) and stroke width adjustment."
-        },
-        {
-          "id": "task-027",
-          "name": "Add shape tools (rectangle, arrow, circle) and undo",
-          "description": "Extend DrawingCanvas with shape tools. Rectangle: touchStart sets one corner, touchEnd sets opposite corner, render as RoundedRect or Rect. Arrow: render as a Line with a small triangle at the end point (using Path). Circle: render as Circle from center point with radius from drag distance. Add tool selector bar (Pen, Rectangle, Arrow, Circle, Eraser). Eraser removes the last overlapping operation. Implement undo (pop from operations array) and redo (push to redo stack). Add compositeImage(): use makeImageFromView or canvas.makeImageSnapshot() to export the final annotated image as base64."
-        }
-      ]
-    },
-    {
-      "id": "04-03",
-      "name": "React Native SDK - Report Form & Provider",
-      "type": "frontend",
-      "phase": 4,
-      "package": "@shakenbake/react-native",
-      "dependsOn": ["04-02", "02-02"],
-      "tasks": [
-        {
-          "id": "task-028",
-          "name": "Create ReportForm React Native component",
-          "description": "Create packages/react-native/src/ui/ReportForm.tsx: React Native component rendered inside a Modal. Contains: TextInput for title (required), TextInput (multiline) for description, severity picker (using a simple segmented control or button group), category picker (same pattern), Image preview of annotated screenshot (tappable to go back to annotation), ScrollView with collapsible device context section. Submit and Cancel buttons. Form validation: title required, min 3 chars. Styled with StyleSheet for light/dark theme support via useColorScheme."
-        },
-        {
-          "id": "task-029",
-          "name": "Create ShakeNbakeProvider React Native component",
-          "description": "Create packages/react-native/src/ShakeNbakeProvider.tsx: React context provider. Accepts ShakeNbakeConfig. On mount: creates PluginRegistry, registers ShakeTrigger, registers ViewShotCapture (wraps children in ViewShot ref), registers DeviceContextCollector, creates ReportBuilder. Activates triggers. On unmount: deactivates. Provides context: { trigger(), isOpen, currentStep }. State machine: idle -> capturing -> annotating -> form -> submitting -> success/error. Renders SkiaAnnotationView and ReportForm modals based on state. Export useShakeNbake() hook."
-        },
-        {
-          "id": "task-030",
-          "name": "Integration and full flow wiring",
-          "description": "Wire the full React Native flow end-to-end. Verify: shake triggers capture, capture result flows to annotation, annotation result flows to form, form submit calls ReportBuilder.submit which calls LinearAdapter. Create packages/react-native/src/index.ts exporting ShakeNbakeProvider, useShakeNbake, ShakeTrigger, ViewShotCapture, DeviceContextCollector. Add package.json with peer dependencies on react-native, expo modules, react-native-shake, react-native-view-shot, @shopify/react-native-skia. Write basic tests where feasible (context collector output shape, report form validation)."
-        }
-      ]
-    },
-    {
-      "id": "05-01",
-      "name": "Example Apps",
-      "type": "frontend",
-      "phase": 5,
-      "package": "examples",
-      "dependsOn": ["03-03", "04-03"],
-      "tasks": [
-        {
-          "id": "task-031",
-          "name": "Create Next.js example app",
-          "description": "Create examples/nextjs-app: a minimal Next.js 14+ app that integrates @shakenbake/web. Includes: app/layout.tsx wrapping children in ShakeNbakeProvider with ProxyAdapter pointed at /api/shakenbake. app/api/shakenbake/route.ts server-side proxy that creates a LinearAdapter (reads API key from env) and forwards reports. app/page.tsx with sample content and instructions. .env.example with LINEAR_API_KEY and LINEAR_TEAM_ID placeholders. package.json with workspace dependencies."
-        },
-        {
-          "id": "task-032",
-          "name": "Create Expo example app",
-          "description": "Create examples/expo-app: a minimal Expo SDK 54 app that integrates @shakenbake/react-native. Includes: App.tsx wrapping content in ShakeNbakeProvider with LinearAdapter (reads API key from EXPO_PUBLIC_LINEAR_API_KEY env). A simple home screen with sample content. app.json configured for development build. .env.example with EXPO_PUBLIC_LINEAR_API_KEY and LINEAR team ID. package.json with workspace dependencies. Note in README that expo prebuild --clean is required."
-        },
-        {
-          "id": "task-033",
-          "name": "Add README with setup instructions to each example",
-          "description": "Create examples/nextjs-app/README.md: prerequisites, install steps (yarn install from root), env setup (.env.local from .env.example), dev server (yarn dev), how to trigger a report (Cmd+Shift+K or FAB), expected result (issue created in Linear). Create examples/expo-app/README.md: prerequisites (Xcode/Android Studio), install steps, env setup, prebuild command, run on device, shake to trigger, expected result. Both READMEs reference the main project docs for advanced configuration."
-        }
-      ]
-    },
-    {
-      "id": "06-01",
-      "name": "MockAdapter & Final Polish",
-      "type": "backend",
-      "phase": 6,
-      "package": "@shakenbake/core",
-      "dependsOn": ["05-01"],
-      "tasks": [
-        {
-          "id": "task-034",
-          "name": "Create MockAdapter implementing DestinationAdapter",
-          "description": "Create packages/core/src/mock-adapter.ts: MockAdapter implements DestinationAdapter. uploadImage() logs the filename and size to console, returns a fake URL (https://mock.shakenbake.dev/images/{uuid}.png). createIssue() logs the full BugReport to console (pretty-printed), returns a fake issue { url: 'https://mock.shakenbake.dev/issues/{uuid}', id: uuid }. testConnection() always returns true. Optionally accepts a config with { delay?: number } to simulate network latency. Stores all submitted reports in an internal array for testing assertions."
-        },
-        {
-          "id": "task-035",
-          "name": "Add MockAdapter to core exports and write tests",
-          "description": "Export MockAdapter from packages/core/src/index.ts. Write vitest tests: MockAdapter.uploadImage returns a URL string, createIssue returns { url, id }, testConnection returns true, submitted reports are stored in the internal array, delay option works. Update README/docs to reference MockAdapter for testing without a Linear account."
-        },
-        {
-          "id": "task-036",
-          "name": "Final integration testing across all packages",
-          "description": "Run full integration test: core + linear + web + react-native all build successfully via turborepo (turbo run build). Type checking passes across all packages (turbo run typecheck). Unit tests pass in all packages (turbo run test). Verify no circular dependencies. Verify each package.json has correct main/types/exports fields. Verify peer dependency ranges are correct. Fix any issues found. Update root package.json scripts and turbo.json task configuration."
+          "name": "Add react-native-shake autolinking workaround documentation",
+          "description": "Create/update packages/react-native/README.md with troubleshooting section for react-native-shake autolinking in Expo monorepos. Include react-native.config.js workaround snippet. Note rebuild required after adding native deps and not supported in Expo Go."
         }
       ]
     }
