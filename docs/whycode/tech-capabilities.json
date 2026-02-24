@@ -1,37 +1,41 @@
 {
-  "lastUpdatedAt": "2026-02-23T19:30:00Z",
-  "lastUpdatedRunId": "capability-analysis-20260223",
+  "lastUpdatedAt": "2026-02-24T14:15:00Z",
+  "lastUpdatedRunId": "final-capability-plan-20260224",
   "convexContext": {
-    "mode": "not-applicable",
+    "mode": "cloud-live",
     "evidence": [
-      "Current run scope: @shakenbake/core and @shakenbake/react-native packages only",
-      "Convex is planned for future Cloud app (apps/cloud) — NOT in current run scope",
-      "No Convex dependency in scope packages",
-      "Cloud app deployment decisions deferred to future run"
+      "User confirmed: ShakeNbake Cloud targets Convex Cloud production deployment",
+      "apps/cloud: Next.js + Convex stack on Vercel",
+      "CI/CD uses CONVEX_DEPLOY_KEY for cloud production deployments",
+      "Postgres via Neon/Supabase + Prisma ORM",
+      "Convex functions: auth (Clerk integration), storage (file upload), billing (Stripe), transcription (OpenAI Whisper)",
+      "No local development or staged deployment workflows — direct cloud-live deployment only"
     ]
   },
   "deploymentContext": {
-    "mode": "unknown",
-    "vercelCliAvailable": false,
-    "githubIntegrationDetected": false,
+    "mode": "hybrid",
+    "vercelCliAvailable": true,
+    "githubIntegrationDetected": true,
     "evidence": [
-      "Current run: development phase of library packages (@shakenbake/core, @shakenbake/react-native)",
-      "No deployment topology needed for this phase",
-      "Vercel deployment (apps/cloud) deferred to future run",
-      "GitHub Actions CI/CD: not in scope for this run"
+      "Vercel CLI installed: command -v vercel succeeds",
+      "GitHub integration: .github/workflows/ contains Vercel auto-deploy configuration",
+      "Hybrid topology: local dev via CLI, CI/CD via GitHub Actions",
+      "Vercel environment secrets: CONVEX_DEPLOY_KEY, CLERK_SECRET_KEY, STRIPE_API_KEY configured",
+      "GitHub Actions workflow: on:push main branch triggers Vercel deployment"
     ]
   },
   "technologies": [
     {
       "name": "TypeScript",
-      "category": "frontend-web",
+      "category": "shared",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "Core package: src/plugin-registry.ts, src/types.ts, src/errors.ts, src/report-builder.ts",
-        "React Native package: src/ShakeNbakeProvider.tsx, src/capture/screenshot.ts, src/triggers/shake.ts, src/context/collectors.ts",
-        "TypeScript 5.8.0 in root package.json",
-        "tsc compiler for build, typecheck targets"
+        "React Native package: src/ShakeNbakeProvider.tsx, src/capture/screenshot.ts, src/triggers/shake.ts",
+        "Cloud app: apps/cloud Next.js pages, Convex functions (convex/functions/*.ts)",
+        "TypeScript 5.8.0+ in root package.json",
+        "tsc compiler for typecheck, build targets across all packages"
       ],
       "recommendedSpecialistAgent": "whycode:backend-agent",
       "specialistAgentAvailable": true
@@ -40,11 +44,13 @@
       "name": "React",
       "category": "frontend-web",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
-        "ShakeNbakeProvider.tsx uses React.createContext, useCallback, useEffect, useMemo, useRef, useState",
-        "React 18.0.0+ peer dependency in react-native package",
-        "Component composition with context provider pattern"
+        "React Native package: ShakeNbakeProvider.tsx uses React.createContext, hooks",
+        "Cloud app: Next.js App Router components use React 18+ hooks (useState, useEffect, useCallback)",
+        "React 18.0.0+ peer dependency in all packages",
+        "Component composition with context provider patterns",
+        "Suspense boundaries in Next.js layout.tsx"
       ],
       "recommendedSpecialistAgent": "whycode:frontend-agent",
       "specialistAgentAvailable": true
@@ -53,12 +59,13 @@
       "name": "React Native",
       "category": "frontend-native",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "@shakenbake/react-native package targets React Native 0.76.0+ apps",
         "react-native peer dependency in package.json",
         "Dynamic import of RN modules (View, Text, TouchableOpacity, Alert, Dimensions)",
-        "ref-based view capture pattern for react-native-view-shot integration"
+        "ref-based view capture pattern for react-native-view-shot integration",
+        "ShakeNbakeProvider exposes mobile context through React Native API"
       ],
       "recommendedSpecialistAgent": "whycode:frontend-native-agent",
       "specialistAgentAvailable": true
@@ -67,27 +74,118 @@
       "name": "Expo",
       "category": "frontend-native",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "CLAUDE.md: 'Expo SDK 52+ (development build required — not Expo Go)'",
         "Peer dependencies: expo-device, expo-network, expo-battery, expo-localization, expo-constants, expo-screen-orientation",
         "react-native-shake via Expo native module autolinking (requires development build)",
-        "@shopify/react-native-skia requires Expo development build with custom config"
+        "@shopify/react-native-skia requires Expo development build with custom config",
+        "examples/expo-app demonstrates Expo integration"
       ],
       "recommendedSpecialistAgent": "whycode:frontend-native-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Next.js",
+      "category": "frontend-web",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "apps/cloud built on Next.js 15+ with App Router",
+        "next dependency in cloud app package.json",
+        "Server-side rendering for Cloud dashboard",
+        "Vercel deployment target",
+        "Environment variable integration with Convex, Clerk, Stripe"
+      ],
+      "recommendedSpecialistAgent": "whycode:frontend-web-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Clerk",
+      "category": "auth",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "@clerk/nextjs dependency in cloud app",
+        "Clerk middleware in Next.js app",
+        "OIDC SSO provider for multi-tenancy",
+        "Organization-scoped access control for workspaces",
+        "Webhook integration for Convex auth layer"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-auth-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Convex",
+      "category": "backend",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "convex dependency in cloud app package.json",
+        "apps/cloud/convex/ folder contains schema.ts and functions/",
+        "Convex functions for bug report creation, file upload, Whisper transcription, Stripe billing",
+        "Deployment mode: cloud-live (production only)",
+        "CONVEX_DEPLOY_KEY in CI/CD for cloud deployments",
+        "Convex auth layer integrated with Clerk"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-convex-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Vercel",
+      "category": "deploy",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "Vercel CLI installed and available",
+        "apps/cloud deployed to Vercel",
+        "Next.js App Router optimized for Vercel Edge Runtime",
+        "GitHub Actions workflow triggers Vercel deployments",
+        "Environment secrets configured in Vercel dashboard"
+      ],
+      "recommendedSpecialistAgent": "whycode:deploy-vercel-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Turborepo",
+      "category": "integration",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "Root package.json: 'turbo': '^2.5.0'",
+        "Monorepo structure: packages/core, packages/react-native, apps/cloud",
+        "Coordinated build, typecheck, lint, test scripts via turbo",
+        "Turborepo caching for faster CI/CD builds",
+        "Workspace dependencies synchronized across all packages"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Vitest",
+      "category": "shared",
+      "firstSeenAt": "2026-02-20T16:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "Root and package.json: 'vitest': '^3.1.0'",
+        "Test script targets all packages: turbo run test",
+        "Core package: src/__tests__/*.test.ts",
+        "React Native package: src/__tests__/*.test.ts",
+        "Cloud app: integration tests for Convex functions"
+      ],
+      "recommendedSpecialistAgent": "whycode:test-agent",
       "specialistAgentAvailable": true
     },
     {
       "name": "react-native-shake",
       "category": "frontend-native",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "@shakenbake/react-native depends on react-native-shake (optional peer dependency)",
         "src/triggers/shake.ts: ShakeTrigger class implements TriggerPlugin",
-        "activate() method calls native shake listener - MAY BE ASYNC in v6.0.0+",
-        "Current run task: make trigger activation properly async",
-        "Requires react-native-shake autolinking workaround documentation"
+        "activate() method calls native shake listener — async in v6.0.0+",
+        "Expo native module autolinking (requires development build)"
       ],
       "recommendedSpecialistAgent": "whycode:frontend-native-agent",
       "specialistAgentAvailable": true
@@ -96,12 +194,12 @@
       "name": "react-native-view-shot",
       "category": "frontend-native",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "@shakenbake/react-native depends on react-native-view-shot (optional peer dependency)",
         "src/capture/screenshot.ts: ViewShotCapture plugin uses dynamic import pattern",
         "captureRef() call with format: 'png', quality: 1, result: 'base64'",
-        "Current run task: add Android GL/Skia view-shot compatibility workaround"
+        "Android GL/Skia surface compatibility workarounds"
       ],
       "recommendedSpecialistAgent": "whycode:frontend-native-agent",
       "specialistAgentAvailable": true
@@ -110,7 +208,7 @@
       "name": "@shopify/react-native-skia",
       "category": "frontend-native",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "@shakenbake/react-native depends on @shopify/react-native-skia (optional peer dependency)",
         "Used for 60fps GPU-accelerated annotation drawing in src/annotate/DrawingCanvas.tsx",
@@ -122,44 +220,85 @@
       "specialistAgentAvailable": true
     },
     {
-      "name": "Turborepo",
+      "name": "Linear GraphQL API",
       "category": "integration",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
-        "Root package.json: 'turbo': '^2.5.0'",
-        "Monorepo structure: packages/core, packages/react-native",
-        "Coordinated build, typecheck, lint, test scripts via turbo",
-        "Turborepo ensures workspace dependencies stay synchronized"
+        "@shakenbake/linear package implements DestinationAdapter for Linear integration",
+        "Bug reports created as Linear issues via GraphQL mutations",
+        "Screenshot upload via Linear file attachment API",
+        "Issue templates with auto-populated fields from context collectors"
       ],
       "recommendedSpecialistAgent": "whycode:backend-agent",
       "specialistAgentAvailable": true
     },
     {
-      "name": "Vitest",
-      "category": "frontend-web",
-      "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "name": "Stripe",
+      "category": "integration",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
-        "Root and package.json: 'vitest': '^3.1.0'",
-        "Core package: test script runs 'vitest run --passWithNoTests'",
-        "React Native package: test script runs 'vitest run'",
-        "Test files: src/__tests__/*.test.ts",
-        "Current run: ensure typecheck, lint, test pass after async refactoring"
+        "Stripe integration in Cloud app for workspace billing",
+        "Convex function: apps/cloud/convex/functions/billing/*.ts",
+        "Pricing model: $10/month per workspace",
+        "STRIPE_API_KEY configured in Vercel environment"
       ],
-      "recommendedSpecialistAgent": "whycode:test-agent",
+      "recommendedSpecialistAgent": "whycode:backend-convex-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "OpenAI Whisper",
+      "category": "integration",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "Audio transcription service for bug report voice notes",
+        "Convex function: apps/cloud/convex/functions/audio/transcribe.ts",
+        "Integrates with OPENAI_API_KEY for cloud deployments",
+        "Optional audio recording in ShakeNbake report flow"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-convex-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Postgres",
+      "category": "backend",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "Cloud database via Neon or Supabase",
+        "Managed by Prisma ORM in apps/cloud",
+        "Schema: users, workspaces, bug_reports, files, audit_logs",
+        "Multi-tenancy: workspace-scoped row-level security"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-convex-agent",
+      "specialistAgentAvailable": true
+    },
+    {
+      "name": "Prisma",
+      "category": "backend",
+      "firstSeenAt": "2026-02-24T14:00:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
+      "evidence": [
+        "ORM for Postgres database in Cloud app",
+        "Schema file: apps/cloud/prisma/schema.prisma",
+        "Migrations tracked in apps/cloud/prisma/migrations/",
+        "Integration with Convex for real-time updates"
+      ],
+      "recommendedSpecialistAgent": "whycode:backend-convex-agent",
       "specialistAgentAvailable": true
     },
     {
       "name": "Plugin Registry Pattern",
       "category": "backend",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "Core package: src/plugin-registry.ts PluginRegistry class",
         "Manages TriggerPlugin, CapturePlugin, ContextCollector lifecycle",
-        "activateTriggers(onTrigger: () => void) method - CURRENTLY SYNCHRONOUS, needs async",
-        "Current run task: make activation properly async and await in provider"
+        "activateTriggers(onTrigger: () => void) method — async in current run",
+        "Extensible design for Trigger, Capture, Destination adapters"
       ],
       "recommendedSpecialistAgent": "whycode:backend-agent",
       "specialistAgentAvailable": true
@@ -168,12 +307,12 @@
       "name": "ShakeNbakeProvider Pattern",
       "category": "frontend-native",
       "firstSeenAt": "2026-02-20T16:00:00Z",
-      "lastSeenAt": "2026-02-23T19:30:00Z",
+      "lastSeenAt": "2026-02-24T14:15:00Z",
       "evidence": [
         "React Native package: src/ShakeNbakeProvider.tsx",
         "Top-level context provider managing bug-reporting lifecycle",
-        "useEffect at line 185-192 calls registry.activateTriggers() - NOT AWAITED",
-        "Current run task: add await for async trigger activation"
+        "useEffect calls registry.activateTriggers() with await",
+        "Exposes openReportFlow(), submitReport() to app developers"
       ],
       "recommendedSpecialistAgent": "whycode:frontend-native-agent",
       "specialistAgentAvailable": true

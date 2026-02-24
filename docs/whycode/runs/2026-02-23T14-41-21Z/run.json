@@ -1,0 +1,22 @@
+{
+  "runId": "2026-02-23T14-41-21Z",
+  "startedAt": "2026-02-23T14:41:21Z",
+  "version": "3.0.0",
+  "flags": [],
+  "name": "ShakeNbake Cloud Website",
+  "completionMode": "partial",
+  "runType": "new",
+  "parentRunId": null,
+  "branch": "whycode/shakenbake-cloud-website-2026-02-23T14-41-21Z",
+  "baseBranch": "main",
+  "events": [
+    {
+      "type": "new",
+      "timestamp": "2026-02-23T14:41:21Z",
+      "summary": "new initialized",
+      "meta": {
+        "completionMode": "partial"
+      }
+    }
+  ]
+}

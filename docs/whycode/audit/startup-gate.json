@@ -11,12 +11,12 @@
   "capabilityDecisionRecorded": true,
   "capabilityDecision": "proceed",
   "convexModeResolved": true,
-  "convexMode": "not-applicable",
+  "convexMode": "cloud-live",
   "runNameConfirmed": true,
   "runRecordInitialized": true,
   "runRecordVisible": true,
   "linearKeyDetected": true,
   "linearInitialized": true,
   "branchInitialized": true,
-  "checkedAt": "2026-02-20T13:45:06Z"
+  "checkedAt": "2026-02-24T00:00:00Z"
 }

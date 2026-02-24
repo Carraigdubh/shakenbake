@@ -1,37 +1,51 @@
-# ShakeNbake — Project Understanding
+# Project Understanding: ShakeNbake Cloud Website
 
 ## Vision
-Open-source (MIT) cross-platform bug reporting SDK. Users shake their device or press a keyboard shortcut to capture a screenshot, annotate it, optionally record audio, and submit a bug report as a Linear issue.
+Build the ShakeNbake Cloud hosted SaaS platform — a multi-tenant dashboard and API for managed bug reporting. Users deploy the ShakeNbake SDK, and Cloud handles report ingestion, audio transcription, and issue tracker forwarding.
 
 ## Goals
-1. Replace expensive bug reporting tools (Shake $160-340/mo, Instabug $249+/mo) with open-source alternative
-2. Support both React Native/Expo and Web platforms
-3. Plugin architecture for extensible destination adapters
-4. Zero-config defaults with maximum context collection
-5. Optional hosted Cloud version at $10/mo
+1. Launch the ShakeNbake Cloud website at shakenbake.mobi
+2. Multi-tenant workspace management with Clerk auth
+3. Report ingestion API for the cloud-client SDK
+4. Dashboard for viewing/managing bug reports, apps, and team
+5. Server-side audio transcription via OpenAI Whisper
+6. Issue tracker forwarding (Linear first)
+7. Stripe billing ($10/mo per workspace)
 
-## Scope: v0.1 MVP
-1. @shakenbake/core — types, plugin interfaces, report builder
-2. @shakenbake/linear — Linear GraphQL adapter (issueCreate + fileUpload)
-3. @shakenbake/web — Web SDK (keyboard/FAB trigger, html2canvas, Canvas annotation, browser context)
-4. @shakenbake/react-native — Mobile SDK (shake trigger, view-shot, Skia annotation, device context)
-5. Example apps (Expo + Next.js)
-6. MockAdapter for testing without Linear
+## Features (Prioritized)
+### P0 - MVP Launch
+- Clerk auth (sign-up, sign-in, organization/workspace management)
+- App management (create apps, generate scoped API keys)
+- Report ingestion API (POST /api/reports)
+- Report viewer dashboard (list + detail view with screenshot, annotations, context)
+- Landing/marketing page
+
+### P1 - Core Value
+- Audio transcription (Whisper integration)
+- Issue tracker forwarding (Linear)
+- Team management (invite, roles)
+
+### P2 - Monetization
+- Stripe billing integration
+- Workspace settings page
 
 ## Technical Constraints
-- Expo SDK 52+ with development builds (no Expo Go)
-- Server-side proxy pattern for Linear API keys on web
-- html2canvas limitations (no cross-origin iframes, no backdrop-filter)
-- Skia for RN annotation (60fps GPU-accelerated)
-- Turborepo monorepo with coordinated releases via changesets
+- Monorepo already uses Yarn workspaces + Turborepo
+- Must integrate with existing @shakenbake/core types and @shakenbake/cloud-client SDK
+- Next.js App Router (not Pages Router)
+- Convex for backend (USER DECISION - replaces Postgres+Prisma from original PRD)
+- Clerk for auth with multi-tenancy via organizations
+- Deploy to Vercel at shakenbake.mobi
+- Convex deployment mode: cloud-live (production)
 
-## Integrations
-- Linear GraphQL API (primary destination adapter)
-- MockAdapter (testing without Linear)
+## Integrations Required
+- Clerk (auth + organizations)
+- Convex (database + backend functions)
+- Vercel (hosting + deployment)
+- Vercel Blob (file storage for screenshots/audio)
+- OpenAI Whisper (audio transcription)
+- Linear API (issue forwarding)
+- Stripe (billing)
 
-## Build Order
-1. core → 2. linear → 3. web (parallel with 4) → 4. react-native → 5. examples → 6. MockAdapter
-
-## Source Documents
-- docs/ShakeNbake-PRD.md (full PRD, 1174 lines)
-- docs/ShakeNbake-SUMMARY.md (quick reference)
+## Architecture Change Note
+The original PRD specifies Postgres via Neon/Supabase with Prisma or Drizzle. The user has explicitly chosen Convex instead. This is an immutable decision per WhyCode protocol. Convex replaces Postgres+ORM for all database, real-time, and backend function needs.

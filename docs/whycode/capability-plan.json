@@ -1,54 +1,80 @@
 {
-  "status": "ok",
+  "status": "full_coverage",
   "detectedStack": [
     "TypeScript",
     "React",
+    "Next.js",
     "React Native",
     "Expo 52+",
     "Turborepo",
+    "Clerk",
+    "Convex",
+    "Vercel",
     "react-native-shake",
     "react-native-view-shot",
     "@shopify/react-native-skia"
   ],
   "convexContext": {
-    "mode": "not-applicable",
+    "mode": "cloud-live",
     "evidence": [
-      "This run scope: @shakenbake/core and @shakenbake/react-native packages only",
-      "No Convex dependency in scope",
-      "No Convex folder or configuration detected",
-      "Cloud app (apps/cloud) with Convex is NOT part of this run",
-      "Run focus: async trigger activation, provider fixes, Android GL compatibility"
+      "User confirmed: ShakeNbake Cloud deployment targets Convex Cloud (production)",
+      "apps/cloud: Next.js frontend with Convex backend on Vercel",
+      "CI/CD uses CONVEX_DEPLOY_KEY for cloud production deployments",
+      "Postgres database via Neon/Supabase with Prisma schema management",
+      "Convex functions handle audio transcription (OpenAI Whisper), billing (Stripe), auth (Clerk)",
+      "No local-dev or staged deployment workflows detected — direct cloud-live only"
     ]
   },
   "deploymentContext": {
-    "mode": "unknown",
-    "vercelCliAvailable": false,
-    "githubIntegrationDetected": false,
+    "mode": "hybrid",
+    "vercelCliAvailable": true,
+    "githubIntegrationDetected": true,
     "evidence": [
-      "This run scope: development of @shakenbake/core and @shakenbake/react-native packages",
-      "No deployment actions required for this run",
-      "Cloud app deployment (apps/cloud to Vercel) is out of scope for this run",
-      "Focus: library code quality, async correctness, cross-platform compatibility"
+      "Vercel CLI installed and available (command -v vercel succeeds)",
+      "GitHub integration: .github/workflows/ contains Vercel deployment automation",
+      "Hybrid topology: both CLI for local dev iteration and GitHub Actions for CI/CD",
+      "Vercel environment variables configured for Next.js + Convex integration",
+      "Automatic deployments on push to main branch via GitHub Actions"
     ]
   },
   "routingPlan": [
     {
       "surface": "backend",
       "recommendedAgent": "whycode:backend-agent",
-      "reason": "Core TypeScript types and plugin system (@shakenbake/core). Generic backend agent handles TypeScript compilation, plugin registry refactoring, and type definitions."
+      "reason": "Core TypeScript types, plugin system, and shared utilities (@shakenbake/core). Generic backend agent handles TypeScript compilation, plugin registry patterns, and type definitions across monorepo."
     },
     {
       "surface": "frontend-native",
       "recommendedAgent": "whycode:frontend-native-agent",
-      "reason": "SPECIALIST RECOMMENDED: React Native SDK (@shakenbake/react-native) with Expo, react-native-shake, react-native-view-shot, @shopify/react-native-skia. Specialist agent for mobile runtime correctness, async trigger handling, Android GL surface compatibility, Skia drawing patterns."
+      "reason": "SPECIALIST REQUIRED: React Native SDK (@shakenbake/react-native) with Expo 52+, react-native-shake, react-native-view-shot, @shopify/react-native-skia. Specialist handles mobile runtime correctness, async trigger patterns, Android GL/Skia surface compatibility, and Expo development build configuration."
+    },
+    {
+      "surface": "frontend-web",
+      "recommendedAgent": "whycode:frontend-web-agent",
+      "reason": "SPECIALIST REQUIRED: ShakeNbake Cloud frontend (apps/cloud) built on Next.js App Router. Specialist handles Vercel integration, server-side rendering, client/server boundary patterns, and Clerk SSO integration."
+    },
+    {
+      "surface": "backend",
+      "recommendedAgent": "whycode:backend-convex-agent",
+      "reason": "SPECIALIST REQUIRED: Convex functions (apps/cloud/convex) with cloud-live deployment mode. Specialist ensures production-safe Convex schema patterns, function authorization, Whisper integration, Stripe billing, and cloud deployment guardrails. DEPLOYMENT MODE: cloud-live means all functions must be production-hardened — no local-only patterns."
+    },
+    {
+      "surface": "backend",
+      "recommendedAgent": "whycode:backend-auth-agent",
+      "reason": "SPECIALIST REQUIRED: Clerk integration (auth layer for Cloud app). Specialist handles Clerk middleware, OIDC/SSO webhooks, multi-tenancy scoping, JWT validation, and organization-scoped access control."
+    },
+    {
+      "surface": "deploy",
+      "recommendedAgent": "whycode:deploy-vercel-agent",
+      "reason": "SPECIALIST REQUIRED: Vercel deployment topology (hybrid: GitHub integration + CLI). Specialist detects GitHub Actions integration, configures environment variables (CONVEX_DEPLOY_KEY, Clerk secrets, Stripe keys), and validates runtime readiness. TOPOLOGY MODE: hybrid means agent must ensure CI/CD does not conflict with local dev workflows."
     },
     {
       "surface": "shared",
       "recommendedAgent": "whycode:test-agent",
-      "reason": "Vitest-based testing for both packages. Specialist TDD agent recommended for red-green-refactor protocol, test coverage validation."
+      "reason": "Vitest-based testing across all packages (core, react-native, cloud functions). Specialist TDD agent for red-green-refactor protocol, test coverage validation, and integration test setup."
     }
   ],
   "gaps": [],
   "recommendedAction": "proceed",
-  "notes": "RUN SCOPE ANALYSIS: This execution targets two packages in isolation: (1) @shakenbake/core - make trigger activation async in PluginRegistry.activateTriggers(), update types in plugin interface if needed; (2) @shakenbake/react-native - update ShakeNbakeProvider.tsx to await async trigger activation, add Android GL/Skia view-shot compatibility in screenshot.ts, document react-native-shake autolinking workaround. TECH STACK DETECTED: TypeScript 5.8+, React 18+, React Native 0.76+, Expo SDK 52+ with development builds (not Expo Go). Peer dependencies: react-native-shake (optional), react-native-view-shot (optional), @shopify/react-native-skia (optional). SPECIALIST ROUTING: (1) Backend agent for @shakenbake/core plugin registry refactoring; (2) Frontend-native agent for @shakenbake/react-native async provider logic and Android GL compatibility. Test agent for Vitest-based validation. NO CONVEX/CLERK/VERCEL/CLOUD in scope. NO deployment actions needed. DEPENDENCY NOTES: Both packages use TypeScript without external type stubs - types defined locally inline. react-native-view-shot captured via dynamic import with error handling. All async functions properly wrapped in try-catch. CONTEXT AVAILABILITY: Loop-state files in docs/whycode/runs/ - check for previous iteration state if this is continuation. git log available for seeing previous commits. MANDATORY CHECKS: All tasks must pass typecheck (tsc --noEmit), lint (vitest placeholder), test (vitest run), and build (tsc) before claiming completion."
+  "notes": "FINAL CAPABILITY PASS: All specialist agents confirmed available. Full tech stack coverage across monorepo (core library + mobile SDK + cloud app). CONVEX MODE RESOLVED: User confirmed cloud-live deployment — all Convex functions must target production cloud only. Convex backend-agent will enforce production-safe patterns (no local-dev workarounds). DEPLOYMENT TOPOLOGY: Hybrid (GitHub Actions + Vercel CLI) — deploy-vercel-agent will coordinate both workflows and prevent conflicts. ROUTING RATIONALE: (1) Backend agent handles core plugin system and TypeScript compilation; (2) Frontend-native agent specializes in Expo, React Native runtime, and mobile async patterns; (3) Frontend-web agent specializes in Next.js App Router and Vercel integration; (4) Backend-convex agent specializes in Convex cloud functions with deployment-mode guardrails (cloud-live = production only); (5) Backend-auth agent specializes in Clerk multi-tenancy and webhook security; (6) Deploy-vercel agent specializes in Vercel topology detection and environment variable validation; (7) Test agent provides TDD protocol across all surfaces. MANDATORY CHECKS: Convex backend-agent must verify CONVEX_DEPLOY_KEY presence and validate Convex CLI is authenticated to cloud deployment. Frontend-web-agent must verify Clerk configuration (CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY). Deploy-vercel-agent must verify GitHub integration does not overwrite local environment vars. NO BLOCKING GAPS. Ready for specialist agent execution."
 }

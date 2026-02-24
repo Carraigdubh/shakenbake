@@ -1,12 +1,12 @@
 {
   "status": "in_progress",
-  "currentPhase": 5,
+  "currentPhase": 0,
   "currentPlan": null,
-  "loopMaxIterations": 20,
-  "completionMode": "strict",
+  "loopMaxIterations": 30,
+  "completionMode": "partial",
   "agentTeamsMode": "turbo-teams",
-  "runId": "2026-02-23T14-50-00Z",
-  "lastUpdatedAt": "2026-02-23T14:50:00Z",
+  "runId": "2026-02-23T14-41-21Z",
+  "lastUpdatedAt": "2026-02-24T00:00:00Z",
   "integrations": {
     "linearEnabled": true,
     "linearMethod": "api",
