@@ -525,7 +525,9 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
         skiaAny?.makeImageFromView;
       if (typeof makeImageFromView !== 'function') return null;
 
-      const image = await makeImageFromView(surfaceRef);
+      const target =
+        rnMod?.findNodeHandle?.(surfaceRef.current) ?? surfaceRef.current;
+      const image = await makeImageFromView(target);
       const encoded = image?.encodeToBase64?.('png', 100) ?? image?.encodeToBase64?.();
       return typeof encoded === 'string' && encoded.length > 0 ? encoded : null;
     } catch (err) {
@@ -533,7 +535,7 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
       console.error('[ShakeNbake] DrawingCanvas: Skia view snapshot fallback failed', err);
       return null;
     }
-  }, [skia]);
+  }, [rnMod, skia]);
 
   const handleDone = useCallback(async () => {
     const hadDrawingBeforeFinalize =
