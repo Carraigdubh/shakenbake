@@ -70,6 +70,11 @@ export interface ShakeNbakeProviderProps {
      * Defaults to `true`. Set to `false` for simulator-first workflows.
      */
     enableShakeTrigger?: boolean;
+    ui?: ShakeNbakeConfig['ui'] & {
+      pickImages?: () => Promise<
+        Array<{ base64: string; mimeType?: string; filename?: string }>
+      >;
+    };
   };
   children: React.ReactNode;
 }
@@ -311,7 +316,11 @@ export function ShakeNbakeProvider(
 
   // ---- Form submit handler ----
   const handleFormSubmit = useCallback(
-    async (input: ReportInput): Promise<SubmitResult> => {
+    async (
+      input: ReportInput & {
+        attachments?: Array<{ base64: string; mimeType?: string; filename?: string }>;
+      },
+    ): Promise<SubmitResult> => {
       dispatch({ type: 'SUBMIT_START' });
 
       try {
@@ -322,6 +331,12 @@ export function ShakeNbakeProvider(
 
         const context = (flowState.data.context ?? EMPTY_DEVICE_CONTEXT) as DeviceContext;
         const report = builder.build(input, context);
+        if (input.attachments && input.attachments.length > 0) {
+          report.customMetadata = {
+            ...(report.customMetadata ?? {}),
+            attachments: input.attachments,
+          };
+        }
 
         // Attach custom metadata if configured
         if (config.customMetadata) {
@@ -449,6 +464,7 @@ export function ShakeNbakeProvider(
       onSubmit: handleFormSubmit,
       onCancel: handleFormCancel,
       onReAnnotate: handleReAnnotate,
+      pickImages: config.ui?.pickImages,
       theme,
       accentColor: config.ui?.accentColor,
     });

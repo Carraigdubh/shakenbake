@@ -197,6 +197,7 @@ export class LinearAdapter implements DestinationAdapter {
     let annotatedUrl: string | undefined;
     let originalUrl: string | undefined;
     let audioUrl: string | undefined;
+    const attachmentUrls: string[] = [];
     const screenshotUploadErrors: string[] = [];
 
     try {
@@ -249,13 +250,57 @@ export class LinearAdapter implements DestinationAdapter {
       }
     }
 
+    // Upload optional user-selected attachments carried in customMetadata.
+    const extraAttachments = Array.isArray(report.customMetadata?.attachments)
+      ? (report.customMetadata?.attachments as Array<{
+          base64?: string;
+          mimeType?: string;
+          filename?: string;
+        }>)
+      : [];
+    if (extraAttachments.length > 0) {
+      for (let i = 0; i < extraAttachments.length; i += 1) {
+        const attachment = extraAttachments[i];
+        if (!attachment?.base64) continue;
+        try {
+          const mimeType = attachment.mimeType || 'image/png';
+          const fallbackExt = mimeType.includes('jpeg')
+            ? 'jpg'
+            : mimeType.includes('webp')
+              ? 'webp'
+              : 'png';
+          const filename =
+            attachment.filename ||
+            `attachment-${report.id}-${String(i + 1)}.${fallbackExt}`;
+          const uploadedUrl = await this.uploadImage(
+            base64ToBuffer(attachment.base64),
+            filename,
+          );
+          attachmentUrls.push(uploadedUrl);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error(
+            '[ShakeNbake][LinearAdapter] Extra attachment upload failed:',
+            error,
+          );
+        }
+      }
+    }
+
     // Build markdown description
-    const description = buildIssueDescription(
+    let description = buildIssueDescription(
       report,
       annotatedUrl,
       originalUrl,
       audioUrl,
     );
+
+    if (attachmentUrls.length > 0) {
+      const attachmentsMd = attachmentUrls
+        .map((url, index) => `![Attachment ${String(index + 1)}](${url})`)
+        .join('\n');
+      description += `\n\n## Additional Attachments\n\n${attachmentsMd}`;
+    }
 
     // Determine priority
     const priority = this.resolvePriority(report.severity);

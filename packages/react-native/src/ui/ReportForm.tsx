@@ -58,11 +58,17 @@ export interface ReportFormProps {
   /** Collected device context (read-only display) */
   context: Partial<DeviceContext>;
   /** Called when the user submits the form */
-  onSubmit: (input: ReportInput) => Promise<SubmitResult>;
+  onSubmit: (
+    input: ReportInput & {
+      attachments?: Array<{ base64: string; mimeType?: string; filename?: string }>;
+    },
+  ) => Promise<SubmitResult>;
   /** Called when the user cancels */
   onCancel: () => void;
   /** Called when the user wants to re-annotate the screenshot */
   onReAnnotate?: () => void;
+  /** Optional host-provided image picker callback for additional attachments */
+  pickImages?: () => Promise<Array<{ base64: string; mimeType?: string; filename?: string }>>;
   /** Light or dark theme */
   theme?: 'light' | 'dark';
   /** Accent color for primary buttons */
@@ -184,6 +190,7 @@ export function ReportForm(props: ReportFormProps): React.ReactNode {
     onSubmit,
     onCancel,
     onReAnnotate,
+    pickImages,
     theme = 'dark',
     accentColor,
   } = props;
@@ -218,6 +225,9 @@ export function ReportForm(props: ReportFormProps): React.ReactNode {
   const [category, setCategory] = useState<Category>('bug');
   const [titleError, setTitleError] = useState<string | null>(null);
   const [contextExpanded, setContextExpanded] = useState(false);
+  const [attachments, setAttachments] = useState<
+    Array<{ base64: string; mimeType?: string; filename?: string }>
+  >([]);
 
   // ---- Submission state ----
   const [submitting, setSubmitting] = useState(false);
@@ -246,13 +256,16 @@ export function ReportForm(props: ReportFormProps): React.ReactNode {
     setSubmitError(null);
 
     try {
-      const input: ReportInput = {
+      const input: ReportInput & {
+        attachments?: Array<{ base64: string; mimeType?: string; filename?: string }>;
+      } = {
         title: title.trim(),
         description: description.trim(),
         severity,
         category,
         annotatedScreenshot,
         originalScreenshot,
+        ...(attachments.length > 0 ? { attachments } : {}),
       };
       const result = await onSubmit(input);
       setSubmitResult(result);
@@ -270,8 +283,22 @@ export function ReportForm(props: ReportFormProps): React.ReactNode {
     category,
     annotatedScreenshot,
     originalScreenshot,
+    attachments,
     onSubmit,
   ]);
+
+  const handleAddImages = useCallback(async () => {
+    if (!pickImages) return;
+    try {
+      const picked = await pickImages();
+      if (!picked || picked.length === 0) return;
+      const sanitized = picked.filter((item) => Boolean(item?.base64));
+      if (sanitized.length === 0) return;
+      setAttachments((prev) => [...prev, ...sanitized].slice(0, 3));
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to pick image');
+    }
+  }, [pickImages]);
 
   // ---- Context items for display ----
   const contextItems = useMemo(() => {
@@ -453,6 +480,38 @@ export function ReportForm(props: ReportFormProps): React.ReactNode {
       color: '#FFFFFF',
       fontSize: 12,
       fontWeight: '500' as const,
+    },
+    attachmentActionsRow: {
+      flexDirection: 'row' as const,
+      marginTop: 10,
+      gap: 8,
+    },
+    attachmentButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      backgroundColor: colors.buttonGroupBg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    attachmentButtonText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500' as const,
+    },
+    attachmentThumbRow: {
+      flexDirection: 'row' as const,
+      gap: 8,
+      marginTop: 10,
+      flexWrap: 'wrap' as const,
+    },
+    attachmentThumb: {
+      width: 84,
+      height: 84,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: '#000000',
     },
     contextHeader: {
       flexDirection: 'row' as const,
@@ -687,6 +746,37 @@ export function ReportForm(props: ReportFormProps): React.ReactNode {
                 )
               : null,
           ),
+          pickImages
+            ? React.createElement(
+                View,
+                { style: styles.attachmentActionsRow },
+                React.createElement(
+                  TouchableOpacity,
+                  { style: styles.attachmentButton, onPress: () => void handleAddImages() },
+                  React.createElement(
+                    Text,
+                    { style: styles.attachmentButtonText },
+                    'Add image',
+                  ),
+                ),
+              )
+            : null,
+          attachments.length > 0
+            ? React.createElement(
+                View,
+                { style: styles.attachmentThumbRow },
+                ...attachments.map((item, index) =>
+                  React.createElement(Image, {
+                    key: `attachment-${String(index)}`,
+                    style: styles.attachmentThumb,
+                    source: {
+                      uri: `data:${item.mimeType || 'image/png'};base64,${item.base64}`,
+                    },
+                    resizeMode: 'cover',
+                  }),
+                ),
+              )
+            : null,
 
           // Title
           React.createElement(
