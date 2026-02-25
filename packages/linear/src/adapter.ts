@@ -130,15 +130,16 @@ export class LinearAdapter implements DestinationAdapter {
           ? imageData
           : new Blob([new Uint8Array(imageData)], { type: contentType });
 
-      // Build headers: Content-Type + Cache-Control + any headers from Linear
-      const putHeaders: Record<string, string> = {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000',
-      };
-
-      // Apply additional headers returned by the fileUpload mutation
+      // Use Linear-provided signed headers as source of truth.
+      const putHeaders: Record<string, string> = {};
       for (const header of uploadHeaders) {
         putHeaders[header.key] = header.value;
+      }
+      const hasContentTypeHeader = Object.keys(putHeaders).some(
+        (k) => k.toLowerCase() === 'content-type',
+      );
+      if (!hasContentTypeHeader) {
+        putHeaders['Content-Type'] = contentType;
       }
 
       const putResponse = await fetch(uploadUrl, {
@@ -196,14 +197,18 @@ export class LinearAdapter implements DestinationAdapter {
     let annotatedUrl: string | undefined;
     let originalUrl: string | undefined;
     let audioUrl: string | undefined;
+    const screenshotUploadErrors: string[] = [];
 
     try {
       annotatedUrl = await this.uploadImage(
         base64ToBuffer(report.screenshot.annotated),
         `screenshot-annotated-${report.id}.png`,
       );
-    } catch {
-      // Fall back to embedding base64 inline if upload fails
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      screenshotUploadErrors.push(`annotated: ${msg}`);
+      // eslint-disable-next-line no-console
+      console.error('[ShakeNbake][LinearAdapter] Annotated screenshot upload failed:', error);
       annotatedUrl = undefined;
     }
 
@@ -212,8 +217,23 @@ export class LinearAdapter implements DestinationAdapter {
         base64ToBuffer(report.screenshot.original),
         `screenshot-original-${report.id}.png`,
       );
-    } catch {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      screenshotUploadErrors.push(`original: ${msg}`);
+      // eslint-disable-next-line no-console
+      console.error('[ShakeNbake][LinearAdapter] Original screenshot upload failed:', error);
       originalUrl = undefined;
+    }
+
+    if (!annotatedUrl && !originalUrl) {
+      throw new ShakeNbakeError(
+        'Failed to upload screenshots to Linear. The issue was not created to avoid losing visual context.',
+        'UPLOAD_FAILED',
+        {
+          retryable: true,
+          originalError: new Error(screenshotUploadErrors.join(' | ')),
+        },
+      );
     }
 
     // Upload audio if present

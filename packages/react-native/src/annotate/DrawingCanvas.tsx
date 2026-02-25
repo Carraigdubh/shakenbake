@@ -67,6 +67,7 @@ interface SkiaImage {
 
 interface SkiaCanvasRef {
   makeImageSnapshot(): SkiaImage;
+  makeImageSnapshotAsync?: () => Promise<SkiaImage>;
 }
 
 // ---------------------------------------------------------------------------
@@ -391,6 +392,7 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
   const canvasRefHolder = useRef<{ current: SkiaCanvasRef | null }>({
     current: null,
   });
+  const surfaceRef = useRef<unknown>(null);
 
   // ---- Load peer dependencies at mount ----
   useEffect(() => {
@@ -464,21 +466,116 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
   // and skip rendering if it hasn't.
 
   // ---- compositeImage: export canvas as base64 ----
-  const compositeImage = useCallback((): string | null => {
+  const compositeImage = useCallback(async (): Promise<string | null> => {
     const ref = canvasRefHolder.current.current;
     if (!ref) return null;
     try {
+      if (typeof ref.makeImageSnapshotAsync === 'function') {
+        const asyncSnapshot = await ref.makeImageSnapshotAsync();
+        const asyncEncoded = asyncSnapshot?.encodeToBase64?.('png', 100);
+        if (asyncEncoded) return asyncEncoded;
+      }
+
       const snapshot = ref.makeImageSnapshot();
-      return snapshot.encodeToBase64('png', 100);
+      return snapshot?.encodeToBase64?.('png', 100) ?? null;
     } catch {
       return null;
     }
   }, []);
 
-  const handleDone = useCallback(() => {
-    const annotated = compositeImage();
+  const captureSurfaceWithViewShot = useCallback(async (): Promise<string | null> => {
+    if (!surfaceRef.current) return null;
+    try {
+      let mod: unknown;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        mod = require('react-native-view-shot');
+      } catch {
+        mod = await import('react-native-view-shot');
+      }
+      // Keep runtime resolution flexible across CJS/ESM export shapes.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const modAny = mod as any;
+      const captureRef =
+        modAny?.captureRef ??
+        modAny?.default?.captureRef ??
+        (typeof modAny?.default === 'function' ? modAny.default : undefined);
+      if (typeof captureRef !== 'function') return null;
+      const raw = await captureRef(surfaceRef.current, {
+        format: 'png',
+        quality: 1,
+        result: 'base64',
+      });
+      if (typeof raw !== 'string' || raw.length === 0) return null;
+      const commaIndex = raw.indexOf(',');
+      return commaIndex >= 0 ? raw.substring(commaIndex + 1) : raw;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[ShakeNbake] DrawingCanvas: view-shot fallback failed', err);
+      return null;
+    }
+  }, []);
+
+  const handleDone = useCallback(async () => {
+    drawActions.endOperation();
+
+    const sleep = (ms: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    const raf = (): Promise<void> =>
+      new Promise((resolve) => {
+        const r = globalThis.requestAnimationFrame;
+        if (typeof r === 'function') {
+          r(() => resolve());
+          return;
+        }
+        setTimeout(resolve, 16);
+      });
+
+    await raf();
+    await raf();
+
+    let annotated: string | null = null;
+    for (let i = 0; i < 6; i += 1) {
+      await sleep(60 + i * 40);
+      annotated = await compositeImage();
+      if (annotated && (annotated !== screenshot || drawState.operations.length === 0)) {
+        break;
+      }
+    }
+
+    if (
+      (!annotated || (annotated === screenshot && drawState.operations.length > 0)) &&
+      drawState.operations.length > 0
+    ) {
+      for (let i = 0; i < 4; i += 1) {
+        await sleep(90 + i * 40);
+        annotated = await captureSurfaceWithViewShot();
+        if (annotated && annotated !== screenshot) {
+          break;
+        }
+      }
+    }
+
+    if (annotated && annotated === screenshot && drawState.operations.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error('[ShakeNbake] DrawingCanvas: snapshot matched original despite drawing operations');
+    }
+    if (!annotated && drawState.operations.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[ShakeNbake] DrawingCanvas: failed to export annotated snapshot, falling back to original',
+      );
+    }
+
     onDone(annotated ?? screenshot, screenshot);
-  }, [compositeImage, onDone, screenshot]);
+  }, [
+    captureSurfaceWithViewShot,
+    compositeImage,
+    drawActions,
+    drawState.operations.length,
+    onDone,
+    screenshot,
+  ]);
 
   // ---- PanResponder for touch drawing ----
   const panResponderRef = useRef<{ panHandlers: Record<string, unknown> } | null>(null);
@@ -645,6 +742,7 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
     React.createElement(
       View,
       {
+        ref: surfaceRef as any,
         style: {
           width: dimensions.width,
           height: dimensions.height,

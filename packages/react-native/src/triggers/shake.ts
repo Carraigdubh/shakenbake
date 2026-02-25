@@ -21,6 +21,15 @@ interface RNShakeModule {
   addListener(callback: () => void): ShakeSubscription;
 }
 
+interface RNModuleWithNativeShake {
+  NativeModules?: {
+    RNShake?: unknown;
+  };
+  TurboModuleRegistry?: {
+    get?: (name: string) => unknown;
+  };
+}
+
 /**
  * TriggerPlugin that fires when the user physically shakes the device.
  *
@@ -35,6 +44,24 @@ export class ShakeTrigger implements TriggerPlugin {
   private subscription: ShakeSubscription | null = null;
 
   async activate(onTrigger: () => void): Promise<void> {
+    // Guard simulator/dev runtimes where the native module is unavailable.
+    // In that case we skip shake activation instead of crashing.
+    try {
+      const rn = (await import('react-native')) as RNModuleWithNativeShake;
+      const nativeShake =
+        rn?.TurboModuleRegistry?.get?.('RNShake') ?? rn?.NativeModules?.RNShake;
+      if (!nativeShake) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[ShakeTrigger] Native RNShake module not found; shake trigger disabled for this runtime',
+        );
+        this.subscription = null;
+        return;
+      }
+    } catch {
+      // Ignore: if react-native import shape differs, we'll attempt module import below.
+    }
+
     let RNShake: RNShakeModule;
 
     try {
@@ -49,7 +76,20 @@ export class ShakeTrigger implements TriggerPlugin {
       );
     }
 
-    this.subscription = RNShake.addListener(onTrigger);
+    try {
+      this.subscription = RNShake.addListener(onTrigger);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes('NativeEventEmitter')) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[ShakeTrigger] NativeEventEmitter unavailable for RNShake; shake trigger disabled for this runtime',
+        );
+        this.subscription = null;
+        return;
+      }
+      throw err;
+    }
   }
 
   deactivate(): void {

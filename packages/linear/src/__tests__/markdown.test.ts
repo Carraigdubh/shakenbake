@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { BugReport } from '@shakenbake/core';
+import type { BugReport, DeviceContext } from '@shakenbake/core';
 import { buildIssueDescription } from '../markdown.js';
 
 function makeReport(overrides?: Partial<BugReport>): BugReport {
@@ -154,6 +154,16 @@ describe('buildIssueDescription', () => {
     // Should still have the basic structure
     expect(md).toContain('## Bug Report');
     expect(md).toContain('Platform | web');
+  });
+
+  it('does not throw when context sections are missing entirely', () => {
+    const report = makeReport({
+      context: {} as unknown as DeviceContext,
+    });
+    expect(() => buildIssueDescription(report)).not.toThrow();
+    const md = buildIssueDescription(report);
+    expect(md).toContain('## Bug Report');
+    expect(md).not.toContain('undefined');
   });
 
   it('includes ShakeNbake footer', () => {

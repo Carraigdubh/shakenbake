@@ -69,15 +69,27 @@ export class ViewShotCapture implements CapturePlugin {
 
   async capture(): Promise<CaptureResult> {
     // --- resolve captureRef function ---
+    // Try require() first (works in monorepo/dev-client runtime where Metro
+    // has already bundled the module), then fall back to dynamic import().
     let captureRef: CaptureRefFn;
     try {
-      const mod: Record<string, unknown> = await import(
-        'react-native-view-shot'
-      );
-      captureRef = (mod['captureRef'] ?? mod['default']) as CaptureRefFn;
-      if (typeof captureRef !== 'function') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports
+      let mod: any;
+      try {
+        mod = require('react-native-view-shot');
+      } catch {
+        mod = await import('react-native-view-shot');
+      }
+
+      const resolved =
+        mod?.captureRef ??
+        mod?.default?.captureRef ??
+        mod?.default;
+
+      if (typeof resolved !== 'function') {
         throw new Error('captureRef is not a function');
       }
+      captureRef = resolved as CaptureRefFn;
     } catch (err) {
       throw new ShakeNbakeError(
         '[ViewShotCapture] react-native-view-shot is required but not installed. ' +

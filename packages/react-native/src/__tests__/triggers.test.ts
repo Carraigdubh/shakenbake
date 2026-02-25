@@ -4,6 +4,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+let mockNativeShakePresent = true;
+vi.mock('react-native', () => ({
+  NativeModules: {
+    get RNShake() {
+      return mockNativeShakePresent ? {} : null;
+    },
+  },
+  TurboModuleRegistry: {
+    get: vi.fn(() => (mockNativeShakePresent ? {} : null)),
+  },
+}));
+
 // Mock react-native-shake before importing ShakeTrigger
 const mockRemove = vi.fn();
 const mockAddListener = vi.fn(() => ({ remove: mockRemove }));
@@ -23,6 +35,7 @@ describe('ShakeTrigger', () => {
   beforeEach(() => {
     trigger = new ShakeTrigger();
     vi.clearAllMocks();
+    mockNativeShakePresent = true;
   });
 
   it('has correct name and platform', () => {
@@ -60,5 +73,17 @@ describe('ShakeTrigger', () => {
     // Second deactivate should not call remove again
     trigger.deactivate();
     expect(mockRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips registration when native RNShake module is unavailable', async () => {
+    mockNativeShakePresent = false;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const onTrigger = vi.fn();
+
+    await trigger.activate(onTrigger);
+
+    expect(mockAddListener).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });

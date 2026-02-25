@@ -64,9 +64,29 @@ export const ShakeNbakeContext = createContext<UseShakeNbakeResult | null>(null)
 // ---------------------------------------------------------------------------
 
 export interface ShakeNbakeProviderProps {
-  config: ShakeNbakeConfig;
+  config: ShakeNbakeConfig & {
+    /**
+     * Whether the built-in shake trigger is enabled.
+     * Defaults to `true`. Set to `false` for simulator-first workflows.
+     */
+    enableShakeTrigger?: boolean;
+  };
   children: React.ReactNode;
 }
+
+const EMPTY_DEVICE_CONTEXT: DeviceContext = {
+  platform: { os: 'unknown' },
+  device: {},
+  screen: { width: 0, height: 0 },
+  network: {},
+  battery: {},
+  locale: {},
+  app: {},
+  accessibility: {},
+  performance: {},
+  navigation: {},
+  console: {},
+};
 
 // ---------------------------------------------------------------------------
 // ShakeNbakeProvider component
@@ -137,8 +157,10 @@ export function ShakeNbakeProvider(
     capturePluginRef.current = capturePlugin;
 
     // Register defaults
-    const shakeTrigger = new ShakeTrigger();
-    registry.registerTrigger(shakeTrigger);
+    if (config.enableShakeTrigger !== false) {
+      const shakeTrigger = new ShakeTrigger();
+      registry.registerTrigger(shakeTrigger);
+    }
     registry.registerCapture(capturePlugin);
     registry.registerCollector(
       new DeviceContextCollector({
@@ -239,7 +261,7 @@ export function ShakeNbakeProvider(
         const contextWithFallback = Promise.race([
           builder.collectContext(),
           new Promise<Partial<DeviceContext>>((resolve) => {
-            contextTimer = setTimeout(() => resolve({}), 4000);
+            contextTimer = setTimeout(() => resolve(EMPTY_DEVICE_CONTEXT), 4000);
           }),
         ]);
 
@@ -298,7 +320,7 @@ export function ShakeNbakeProvider(
           throw new Error('ReportBuilder not initialized');
         }
 
-        const context = (flowState.data.context ?? {}) as DeviceContext;
+        const context = (flowState.data.context ?? EMPTY_DEVICE_CONTEXT) as DeviceContext;
         const report = builder.build(input, context);
 
         // Attach custom metadata if configured
@@ -423,7 +445,7 @@ export function ShakeNbakeProvider(
         width: 0,
         height: 0,
       },
-      context: flowState.data.context ?? {},
+      context: (flowState.data.context ?? EMPTY_DEVICE_CONTEXT) as DeviceContext,
       onSubmit: handleFormSubmit,
       onCancel: handleFormCancel,
       onReAnnotate: handleReAnnotate,

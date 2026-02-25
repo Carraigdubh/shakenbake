@@ -2,7 +2,18 @@
 // @shakenbake/linear — Markdown description builder for Linear issues
 // ---------------------------------------------------------------------------
 
-import type { BugReport, DeviceContext } from '@shakenbake/core';
+import type {
+  BugReport,
+  DeviceContext,
+  PlatformContext,
+  DeviceInfo,
+  ScreenInfo,
+  NetworkInfo,
+  BatteryInfo,
+  LocaleInfo,
+  AppInfo,
+  NavigationInfo,
+} from '@shakenbake/core';
 
 /**
  * Build a formatted Markdown description for a Linear issue from a BugReport.
@@ -58,14 +69,9 @@ export function buildIssueDescription(
   if (contextTable) {
     sections.push('### Device Context');
     sections.push('');
-    sections.push('<details>');
-    sections.push('<summary>Full device and environment details</summary>');
-    sections.push('');
     sections.push('| Field | Value |');
     sections.push('|---|---|');
     sections.push(contextTable);
-    sections.push('');
-    sections.push('</details>');
     sections.push('');
   }
 
@@ -89,11 +95,11 @@ export function buildIssueDescription(
  * Build a Markdown table of device context fields.
  * Only includes fields that have values.
  */
-function buildContextTable(context: DeviceContext): string {
+function buildContextTable(context: DeviceContext | Partial<DeviceContext> | undefined): string {
   const rows: string[] = [];
 
   // Platform
-  const { platform } = context;
+  const platform: Partial<PlatformContext> = context?.platform ?? {};
   if (platform.os) {
     const osDisplay = platform.osVersion
       ? `${platform.os} ${platform.osVersion}`
@@ -110,21 +116,21 @@ function buildContextTable(context: DeviceContext): string {
   }
 
   // Device
-  const { device } = context;
+  const device: Partial<DeviceInfo> = context?.device ?? {};
   const deviceParts = [device.manufacturer, device.model].filter(Boolean);
   if (deviceParts.length > 0) {
     rows.push(`| Device | ${deviceParts.join(' ')} |`);
   }
 
   // Screen
-  const { screen } = context;
+  const screen: Partial<ScreenInfo> = context?.screen ?? {};
   if (screen.width && screen.height) {
     const scaleStr = screen.scale ? ` @${String(screen.scale)}x` : '';
     rows.push(`| Screen | ${String(screen.width)}x${String(screen.height)}${scaleStr} |`);
   }
 
   // Network
-  const { network } = context;
+  const network: Partial<NetworkInfo> = context?.network ?? {};
   const networkParts: string[] = [];
   if (network.type) networkParts.push(network.type);
   if (network.effectiveType) networkParts.push(`(${network.effectiveType})`);
@@ -133,14 +139,14 @@ function buildContextTable(context: DeviceContext): string {
   }
 
   // Battery
-  const { battery } = context;
+  const battery: Partial<BatteryInfo> = context?.battery ?? {};
   if (battery.level !== undefined) {
     const stateStr = battery.state ? ` (${battery.state})` : '';
     rows.push(`| Battery | ${String(battery.level)}%${stateStr} |`);
   }
 
   // Locale
-  const { locale } = context;
+  const locale: Partial<LocaleInfo> = context?.locale ?? {};
   const localeParts = [locale.languageCode, locale.regionCode].filter(Boolean);
   if (localeParts.length > 0) {
     rows.push(`| Locale | ${localeParts.join('-')} |`);
@@ -151,7 +157,7 @@ function buildContextTable(context: DeviceContext): string {
   }
 
   // App
-  const { app } = context;
+  const app: Partial<AppInfo> = context?.app ?? {};
   if (app.version) {
     const buildStr = app.buildNumber ? ` (${app.buildNumber})` : '';
     rows.push(`| App Version | ${app.version}${buildStr} |`);
@@ -162,7 +168,7 @@ function buildContextTable(context: DeviceContext): string {
   }
 
   // Navigation
-  const { navigation } = context;
+  const navigation: Partial<NavigationInfo> = context?.navigation ?? {};
   if (navigation.currentRoute) {
     rows.push(`| Current Route | ${navigation.currentRoute} |`);
   }
@@ -173,8 +179,8 @@ function buildContextTable(context: DeviceContext): string {
 /**
  * Build a Markdown section for console errors (last 5).
  */
-function buildConsoleErrors(context: DeviceContext): string | null {
-  const errors = context.console.recentErrors;
+function buildConsoleErrors(context: DeviceContext | Partial<DeviceContext> | undefined): string | null {
+  const errors = context?.console?.recentErrors;
   if (!errors || errors.length === 0) {
     return null;
   }
