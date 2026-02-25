@@ -516,8 +516,28 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
     }
   }, []);
 
+  const captureSurfaceWithSkiaViewSnapshot = useCallback(async (): Promise<string | null> => {
+    if (!surfaceRef.current || !skia) return null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const skiaAny = skia as any;
+      const makeImageFromView: ((ref: unknown) => Promise<SkiaImage | null>) | undefined =
+        skiaAny?.makeImageFromView;
+      if (typeof makeImageFromView !== 'function') return null;
+
+      const image = await makeImageFromView(surfaceRef);
+      const encoded = image?.encodeToBase64?.('png', 100) ?? image?.encodeToBase64?.();
+      return typeof encoded === 'string' && encoded.length > 0 ? encoded : null;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[ShakeNbake] DrawingCanvas: Skia view snapshot fallback failed', err);
+      return null;
+    }
+  }, [skia]);
+
   const handleDone = useCallback(async () => {
-    drawActions.endOperation();
+    const hadDrawingBeforeFinalize =
+      drawState.operations.length > 0 || Boolean(drawState.currentOperation);
 
     const sleep = (ms: number): Promise<void> =>
       new Promise((resolve) => setTimeout(resolve, ms));
@@ -538,14 +558,27 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
     for (let i = 0; i < 6; i += 1) {
       await sleep(60 + i * 40);
       annotated = await compositeImage();
-      if (annotated && (annotated !== screenshot || drawState.operations.length === 0)) {
+      if (annotated && (annotated !== screenshot || !hadDrawingBeforeFinalize)) {
         break;
       }
     }
 
     if (
-      (!annotated || (annotated === screenshot && drawState.operations.length > 0)) &&
-      drawState.operations.length > 0
+      (!annotated || (annotated === screenshot && hadDrawingBeforeFinalize)) &&
+      hadDrawingBeforeFinalize
+    ) {
+      for (let i = 0; i < 3; i += 1) {
+        await sleep(80 + i * 40);
+        annotated = await captureSurfaceWithSkiaViewSnapshot();
+        if (annotated && annotated !== screenshot) {
+          break;
+        }
+      }
+    }
+
+    if (
+      (!annotated || (annotated === screenshot && hadDrawingBeforeFinalize)) &&
+      hadDrawingBeforeFinalize
     ) {
       for (let i = 0; i < 4; i += 1) {
         await sleep(90 + i * 40);
@@ -556,39 +589,48 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
       }
     }
 
-    if (annotated && annotated === screenshot && drawState.operations.length > 0) {
+    if (annotated && annotated === screenshot && hadDrawingBeforeFinalize) {
       // eslint-disable-next-line no-console
       console.error('[ShakeNbake] DrawingCanvas: snapshot matched original despite drawing operations');
     }
-    if (!annotated && drawState.operations.length > 0) {
+    if (!annotated && hadDrawingBeforeFinalize) {
       // eslint-disable-next-line no-console
       console.error(
         '[ShakeNbake] DrawingCanvas: failed to export annotated snapshot, falling back to original',
       );
     }
-
     onDone(annotated ?? screenshot, screenshot);
   }, [
+    captureSurfaceWithSkiaViewSnapshot,
     captureSurfaceWithViewShot,
     compositeImage,
-    drawActions,
+    drawState.currentOperation,
     drawState.operations.length,
     onDone,
     screenshot,
   ]);
 
   // ---- PanResponder for touch drawing ----
-  const panResponderRef = useRef<{ panHandlers: Record<string, unknown> } | null>(null);
+  const drawActionsRef = useRef(drawActions);
+  const [panHandlers, setPanHandlers] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    if (!rnMod) return;
-    panResponderRef.current = rnMod.PanResponder.create({
+    drawActionsRef.current = drawActions;
+  }, [drawActions]);
+
+  useEffect(() => {
+    if (!rnMod) {
+      setPanHandlers(null);
+      return;
+    }
+
+    const responder = rnMod.PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (
         evt: { nativeEvent: { locationX: number; locationY: number } },
       ) => {
-        drawActions.startOperation({
+        drawActionsRef.current.startOperation({
           x: evt.nativeEvent.locationX,
           y: evt.nativeEvent.locationY,
         });
@@ -596,16 +638,17 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
       onPanResponderMove: (
         evt: { nativeEvent: { locationX: number; locationY: number } },
       ) => {
-        drawActions.continueOperation({
+        drawActionsRef.current.continueOperation({
           x: evt.nativeEvent.locationX,
           y: evt.nativeEvent.locationY,
         });
       },
       onPanResponderRelease: () => {
-        drawActions.endOperation();
+        drawActionsRef.current.endOperation();
       },
     });
-  }, [rnMod, drawActions]);
+    setPanHandlers(responder.panHandlers as Record<string, unknown>);
+  }, [rnMod]);
 
   // ---- Render: loading / error / canvas ----
 
@@ -743,11 +786,11 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
       View,
       {
         ref: surfaceRef as any,
+        collapsable: false,
         style: {
           width: dimensions.width,
           height: dimensions.height,
         },
-        ...(panResponderRef.current?.panHandlers ?? {}),
       },
       React.createElement(
         Canvas,
@@ -774,6 +817,17 @@ export function DrawingCanvas(props: DrawingCanvasProps): React.ReactNode {
         // All drawing operations
         ...allOperations.map(renderOperation),
       ),
+      React.createElement(View, {
+        style: {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'transparent',
+        },
+        ...(panHandlers ?? {}),
+      }),
     ),
     // Toolbar overlay
     React.createElement(Toolbar, {
