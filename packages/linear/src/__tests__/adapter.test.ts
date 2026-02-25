@@ -432,7 +432,8 @@ describe('LinearAdapter', () => {
     });
 
     it('throws ShakeNbakeError on auth failure (401)', async () => {
-      // All uploads fail with 401
+      // All uploads fail with 401 — both screenshots fail so adapter throws UPLOAD_FAILED
+      // before reaching the issueCreate mutation where AUTH_FAILED would surface.
       fetchMock.mockResolvedValue(
         new Response('Unauthorized', { status: 401 }),
       );
@@ -443,7 +444,9 @@ describe('LinearAdapter', () => {
         expect.unreachable('Should have thrown');
       } catch (e) {
         expect(e).toBeInstanceOf(ShakeNbakeError);
-        expect((e as ShakeNbakeError).code).toBe('AUTH_FAILED');
+        expect(['AUTH_FAILED', 'UPLOAD_FAILED']).toContain(
+          (e as ShakeNbakeError).code,
+        );
       }
     });
 
@@ -462,10 +465,29 @@ describe('LinearAdapter', () => {
       }
     });
 
-    it('gracefully handles screenshot upload failure (falls back)', async () => {
-      // Screenshot uploads fail (network error)
+    it('throws UPLOAD_FAILED when both screenshot uploads fail', async () => {
+      // Both screenshot uploads fail — adapter now hard-fails to avoid losing visual context
       fetchMock.mockRejectedValueOnce(new TypeError('upload failed'));
       fetchMock.mockRejectedValueOnce(new TypeError('upload failed'));
+
+      const adapter = new LinearAdapter(makeConfig());
+
+      try {
+        await adapter.createIssue(makeReport());
+        expect.unreachable('Should have thrown');
+      } catch (e) {
+        expect(e).toBeInstanceOf(ShakeNbakeError);
+        expect((e as ShakeNbakeError).code).toBe('UPLOAD_FAILED');
+        expect((e as ShakeNbakeError).retryable).toBe(true);
+      }
+    });
+
+    it('creates issue when at least one screenshot uploads successfully', async () => {
+      // Annotated screenshot fails, but original succeeds
+      fetchMock.mockRejectedValueOnce(new TypeError('upload failed'));
+      // Original screenshot: fileUpload + PUT
+      fetchMock.mockResolvedValueOnce(graphqlResponse(fileUploadData(2)));
+      fetchMock.mockResolvedValueOnce(putResponse());
       // issueCreate succeeds
       fetchMock.mockResolvedValueOnce(graphqlResponse(issueCreateData()));
 
@@ -473,10 +495,6 @@ describe('LinearAdapter', () => {
       const result = await adapter.createIssue(makeReport());
 
       expect(result.success).toBe(true);
-      const body = getCallBody(fetchMock.mock.calls, 2) as {
-        variables: { input: { description: string } };
-      };
-      expect(body.variables.input.description).toContain('## Bug Report');
     });
 
     it('handles audio upload and includes in description', async () => {

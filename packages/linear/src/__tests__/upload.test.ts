@@ -171,7 +171,7 @@ describe('uploadImage', () => {
       expect(headers['x-amz-acl']).toBe('public-read');
       expect(headers['x-amz-meta-custom']).toBe('linear-upload');
       expect(headers['Content-Type']).toBe('image/png');
-      expect(headers['Cache-Control']).toBe('public, max-age=31536000');
+      // Cache-Control is no longer hardcoded; only Linear-provided signed headers are used
     });
   });
 
@@ -447,7 +447,7 @@ describe('uploadImage', () => {
       expect(headers['Content-Type']).toBe('image/png');
     });
 
-    it('includes Cache-Control header in PUT request', async () => {
+    it('does not hardcode Cache-Control header (uses only Linear-provided signed headers)', async () => {
       fetchMock.mockResolvedValueOnce(graphqlResponse(fileUploadData(1)));
       fetchMock.mockResolvedValueOnce(putResponse());
 
@@ -456,7 +456,8 @@ describe('uploadImage', () => {
 
       const putInit = getCallInit(fetchMock.mock.calls, 1);
       const headers = putInit.headers as Record<string, string>;
-      expect(headers['Cache-Control']).toBe('public, max-age=31536000');
+      // Cache-Control is no longer hardcoded — only Linear-provided headers are sent
+      expect(headers['Cache-Control']).toBeUndefined();
     });
 
     it('sends body as Blob even when input is Buffer', async () => {

@@ -98,11 +98,11 @@ describe('buildIssueDescription', () => {
     expect(md).toContain('/settings');
   });
 
-  it('wraps context in collapsible details tag', () => {
+  it('renders context as a flat table under Device Context heading', () => {
     const md = buildIssueDescription(makeReport());
-    expect(md).toContain('<details>');
-    expect(md).toContain('<summary>Full device and environment details</summary>');
-    expect(md).toContain('</details>');
+    expect(md).toContain('### Device Context');
+    expect(md).toContain('| Field | Value |');
+    expect(md).toContain('|---|---|');
   });
 
   it('includes console errors when present', () => {
