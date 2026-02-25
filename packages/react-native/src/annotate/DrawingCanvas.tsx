@@ -86,6 +86,7 @@ interface RNModule {
       panHandlers: Record<string, unknown>;
     };
   };
+  findNodeHandle?: (componentOrHandle: unknown) => number | null;
 }
 
 // ---------------------------------------------------------------------------
