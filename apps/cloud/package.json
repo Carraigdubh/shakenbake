@@ -3,18 +3,34 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "echo 'cloud app build placeholder'",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'lint placeholder'",
     "test": "echo 'no tests yet'",
-    "dev": "echo 'cloud app dev placeholder'",
     "clean": "rm -rf .next dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@shakenbake/core": "0.0.1"
+    "@radix-ui/react-slot": "^1.2.4",
+    "@shakenbake/core": "0.0.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.0",
-    "@types/react": "^19.1.0"
+    "@eslint/eslintrc": "^3.3.4",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.8.0"
   }
 }
