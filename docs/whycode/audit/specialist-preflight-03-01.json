@@ -3,11 +3,15 @@
   "planId": "03-01",
   "status": "pass",
   "resolvedContext": {
-    "frameworkMode": "react-web",
-    "renderingBaseline": "client-heavy"
+    "frameworkMode": "next-app-router",
+    "renderingBaseline": "server-first",
+    "framework": "next-15",
+    "appRouter": true,
+    "clerkUI": true,
+    "tailwindV4": true
   },
   "source": "capability-plan",
   "commandsBlockedForSafety": [],
   "requiresUserInput": false,
-  "notes": "Web SDK package (@shakenbake/web) is a standalone React/DOM library, not a Next.js app. Framework mode is 'react-web' since this package provides client-side trigger plugins, screenshot capture via html2canvas-pro, and browser context collection. Rendering baseline is 'client-heavy' as all web SDK functionality is inherently client-side (DOM event listeners, Canvas APIs, navigator APIs). No server components involved at this layer. Dependencies to add: react/react-dom as peerDependencies, html2canvas-pro as dependency, @types/react and @types/react-dom as devDependencies, jsdom for vitest testing environment. tsconfig.json needs jsx and DOM lib settings."
+  "notes": "Plan 03-01 targets apps/cloud (Next.js 15 App Router). Server-first rendering baseline. Clerk auth pages use catch-all routes with Clerk hosted UI components. Dashboard layout uses client components for sidebar interactivity and Clerk UserButton/OrganizationSwitcher. Landing page is a pure server component. Tailwind v4 with @import syntax. shadcn/ui new-york style components available."
 }
