@@ -238,3 +238,36 @@
 ### Notes
 - Dashboard layout uses `force-dynamic` to prevent static prerendering (Clerk components require ClerkProvider at runtime)
 - Landing page is statically prerendered (server component, no client JS)
+
+---
+
+## 2026-02-26T11:45:00Z - Plan 02-02: Report Ingestion Endpoint
+
+**Agent**: whycode:backend-convex-agent | **Iteration**: 1 | **Outcome**: PLAN_COMPLETE
+
+### Tasks Completed
+- **task-001**: Created HTTP router (http.ts) with POST /api/ingest, Bearer token auth via validateApiKey, body validation, CORS headers, OPTIONS preflight. Created _generated/api.ts stub for internal references.
+- **task-002**: Created reports.ts with ingestReport internal mutation. File storage (base64 decode + ctx.storage.store()) handled in HTTP action (StorageActionWriter), storage IDs passed to mutation.
+- **task-003**: Added listReports (paginated, filtered by org/app/severity), getReport (with resolved storage URLs), getReportCounts (severity breakdown).
+
+### Verification
+- typecheck: PASS (exit 0) - all 8 packages
+- lint: PASS (exit 0) - all 8 packages
+- test: PASS (407 total: 80 core + 97 linear + 142 web + 88 react-native)
+- build: PASS (exit 0) - all 8 packages
+- smoke: PASS (Next.js dev server starts, Ready in 2.2s)
+
+### Safety
+- Convex mode: cloud-live (capability-plan)
+- Blocked commands: npx convex dev, npx convex deploy, npx convex dev --local
+- Key architectural note: ctx.storage.store() only available in action context (StorageActionWriter), not mutation context (StorageWriter)
+
+---
+
+## 2026-02-26T11:45Z - Plan 02-02 Completed
+
+- **Phase**: 5 (Implementation)
+- **Plan**: 02-02 (Report Ingestion Endpoint)
+- **Result**: PASS
+- **Tests**: 407/407 passing
+- **Iterations**: 1
