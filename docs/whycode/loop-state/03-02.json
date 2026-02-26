@@ -1,0 +1,16 @@
+{
+  "planId": "03-02",
+  "planName": "Apps Management Pages",
+  "agentType": "whycode:frontend-web-agent",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "complete",
+  "currentRunId": "03-02-1-2026-02-26T12:00:00Z",
+  "tasks": [
+    { "id": "task-001", "name": "Apps list page with create dialog", "status": "done", "lastVerified": "2026-02-26T12:20:00Z" },
+    { "id": "task-002", "name": "App detail page with API key management", "status": "done", "lastVerified": "2026-02-26T12:25:00Z" },
+    { "id": "task-003", "name": "Delete app with confirmation", "status": "done", "lastVerified": "2026-02-26T12:30:00Z" }
+  ],
+  "iterations": [{ "iteration": 1, "startedAt": "2026-02-26T12:00:00Z", "outcome": "PLAN_COMPLETE" }],
+  "lastVerificationFailure": null
+}
