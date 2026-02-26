@@ -1,206 +1,51 @@
-# Architecture Overview
+# ShakeNbake Cloud Architecture
 
-## Package Dependency Graph
+## Overview
+ShakeNbake Cloud is a Next.js 15 App Router application using Clerk for auth, Convex for backend (cloud-live), deployed to Vercel at shakenbake.mobi.
 
+## Architecture Pattern: Balanced
+Pragmatic approach: Convex provides schema, functions, file storage, and real-time subscriptions in one platform. Clerk handles auth UI and multi-tenancy. Next.js App Router for SSR/SSG where possible.
+
+## Directory Structure
 ```
-@shakenbake/web ────────> @shakenbake/core <──────── @shakenbake/react-native
-                               ^
-                               |
-                     @shakenbake/linear
-                     @shakenbake/cloud-client
-                     (future adapters)
+apps/cloud/
+  convex/               # Convex backend (deployed separately)
+    schema.ts           # Table definitions
+    auth.config.ts      # Clerk integration
+    organizations.ts    # Org sync functions
+    apps.ts             # App CRUD
+    apiKeys.ts          # API key management
+    reports.ts          # Report ingestion + queries
+    http.ts             # HTTP router for public API
+  src/
+    app/
+      layout.tsx        # Root layout with providers
+      page.tsx          # Landing page
+      sign-in/          # Clerk sign-in
+      sign-up/          # Clerk sign-up
+      dashboard/
+        layout.tsx      # Dashboard shell (sidebar + header)
+        page.tsx        # Overview
+        apps/           # App management
+        reports/        # Report browsing
+    components/
+      providers.tsx     # ConvexClerkProvider
+      sidebar.tsx       # Navigation
+      header.tsx        # Org switcher + user
+      ui/               # shadcn/ui components
+    lib/
+      utils.ts          # Utilities
+    middleware.ts       # Clerk auth middleware
 ```
-
-All arrows point inward toward core. No package depends on a sibling. Core has zero runtime dependencies.
-
-## Plugin System
-
-Four interfaces defined in `@shakenbake/core`:
-
-```
-TriggerPlugin        -> activate(onTrigger) / deactivate()
-CapturePlugin        -> capture() -> CaptureResult
-ContextCollector     -> collect() -> Record<string, unknown>
-DestinationAdapter   -> uploadImage() / createIssue() / testConnection()
-```
-
-Each plugin declares `name` and `platform` ('react-native' | 'web' | 'universal').
 
 ## Data Flow
+1. SDK sends POST to Convex HTTP endpoint with API key
+2. HTTP action validates key, stores files, creates report record
+3. Dashboard queries reports via Convex real-time subscriptions
+4. Clerk manages auth, Convex enforces org-scoped data isolation
 
-```
-1. Trigger fires
-   TriggerPlugin.activate(callback) invokes callback
-        |
-        v
-2. Screenshot captured
-   CapturePlugin.capture() -> { base64, width, height, uri? }
-        |
-        v
-3. Annotation overlay
-   Platform UI (Skia on RN, Canvas on web)
-   User draws freehand, arrows, rectangles, text
-   -> annotated image (base64)
-        |
-        v
-4. Context collected
-   ContextCollector[].collect() -> merged DeviceContext
-        |
-        v
-5. Report form
-   Platform UI (ReportForm component)
-   User enters: title, description, severity, category
-        |
-        v
-6. Report built
-   ReportBuilder.build({
-     title, description, severity, category,
-     screenshot: { original, annotated, dimensions },
-     context: mergedDeviceContext,
-     customMetadata: config.customMetadata?.()
-   }) -> BugReport
-        |
-        v
-7. Submitted
-   DestinationAdapter.uploadImage(annotated) -> imageUrl
-   DestinationAdapter.createIssue(report) -> { url, id }
-        |
-        v
-8. Result
-   Success: show confirmation with issue link
-   Failure: queue in local storage, retry on reconnect
-```
-
-## Key Classes
-
-### ReportBuilder (core)
-
-Orchestrates report assembly. Does not own UI.
-
-```typescript
-class ReportBuilder {
-  constructor(registry: PluginRegistry, destination: DestinationAdapter)
-
-  startCapture(): Promise<CaptureResult>
-  collectContext(): Promise<DeviceContext>
-  build(input: ReportInput): BugReport
-  submit(report: BugReport): Promise<SubmitResult>
-}
-```
-
-### PluginRegistry (core)
-
-Stores plugins by type. Platform providers register defaults at init.
-
-```typescript
-class PluginRegistry {
-  registerTrigger(plugin: TriggerPlugin): void
-  registerCapture(plugin: CapturePlugin): void
-  registerCollector(plugin: ContextCollector): void
-  getTriggers(): TriggerPlugin[]
-  getCapture(): CapturePlugin | undefined
-  getCollectors(): ContextCollector[]
-  clear(): void
-}
-```
-
-### ShakeNbakeProvider (web & react-native)
-
-React context provider. The public API surface for each platform SDK.
-
-1. Accepts ShakeNbakeConfig
-2. Creates PluginRegistry with platform-default plugins
-3. Creates ReportBuilder
-4. Activates triggers on mount, deactivates on unmount
-5. Provides ShakeNbakeContext to children (trigger, isOpen, report state)
-
-### ShakeNbakeError (core)
-
-Typed error class for all adapter failures.
-
-```typescript
-class ShakeNbakeError extends Error {
-  code: 'AUTH_FAILED' | 'RATE_LIMITED' | 'UPLOAD_FAILED' | 'NETWORK_ERROR' | 'UNKNOWN'
-  retryable: boolean
-  originalError?: unknown
-}
-```
-
-## Error Handling & Retry
-
-- Adapters throw ShakeNbakeError on failure (never return silently)
-- testConnection() returns false on auth failure (does not throw)
-- Failed submissions are serialized and queued:
-  - React Native: AsyncStorage
-  - Web: localStorage
-- Queue is drained on reconnect (navigator.onLine / NetInfo)
-- Retryable errors (NETWORK_ERROR, RATE_LIMITED) are retried with exponential backoff
-- Non-retryable errors (AUTH_FAILED) surface a user-facing message
-
-## Package Internal Structure
-
-Each platform SDK follows this layout:
-
-```
-src/
-  ShakeNbakeProvider.tsx    # Provider component (public API)
-  triggers/                 # TriggerPlugin implementations
-  capture/                  # CapturePlugin implementation
-  annotate/                 # Annotation UI (Skia or Canvas)
-  audio/                    # Audio recording (v0.2)
-  ui/                       # ReportForm, ReportModal
-  context/                  # ContextCollector implementations
-  index.ts                  # Public exports
-```
-
-## Configuration
-
-```typescript
-interface ShakeNbakeConfig {
-  enabled: boolean                          // Master kill switch
-  destination: DestinationAdapter           // Where reports go
-  triggers?: TriggerPlugin[]                // Custom triggers (platform defaults used if omitted)
-  contextCollectors?: ContextCollector[]    // Additional collectors
-  customMetadata?: () => Record<string, unknown>
-
-  ui?: {
-    theme?: 'light' | 'dark' | 'auto'
-    accentColor?: string
-    position?: 'bottom-right' | 'bottom-left'
-    showFAB?: boolean
-  }
-
-  audio?: {
-    enabled: boolean
-    maxDurationMs: number                   // Default: 60000
-  }
-
-  privacy?: {
-    redactFields?: string[]
-    requireConsent?: boolean
-    stripPersonalData?: boolean
-  }
-}
-```
-
-## Security Model
-
-| Deployment | API Key Location | Risk |
-|---|---|---|
-| Web + server proxy | Server-side only | Low |
-| Web + direct | Client bundle (exposed) | High (not recommended) |
-| React Native | Env var compiled into binary | Medium |
-| ShakeNbake Cloud | Cloud server-side, client gets scoped write-only key | Low |
-
-## MVP Scope (v0.1)
-
-Included: triggers, screenshot capture, annotation (freehand + shapes), report form, Linear adapter, context collection, error handling, local retry queue, MockAdapter.
-
-Excluded (v0.2+): audio recording, audio transcription, Cloud platform, Stripe billing.
-
-## Related Documents
-
-- [ADR-001: Tech Stack](../adr/ADR-001-tech-stack.md)
-- [ADR-002: Architecture](../adr/ADR-002-architecture.md)
-- [Full PRD](../ShakeNbake-PRD.md)
-- [Discovery Findings](../whycode/discovery/DISCOVERY.md)
+## Security
+- API keys scoped to org (snb_app_ prefix)
+- All Convex functions enforce org ownership via ctx.auth
+- Clerk middleware protects /dashboard/* routes
+- HTTP ingestion validates API keys before any data access

@@ -1,51 +1,43 @@
 # Project Understanding: ShakeNbake Cloud Website
 
 ## Vision
-Build the ShakeNbake Cloud hosted SaaS platform — a multi-tenant dashboard and API for managed bug reporting. Users deploy the ShakeNbake SDK, and Cloud handles report ingestion, audio transcription, and issue tracker forwarding.
+Build the ShakeNbake Cloud SaaS platform - a hosted bug reporting service that receives reports from the ShakeNbake SDK (mobile + web), stores them, and forwards them to Linear.
 
 ## Goals
-1. Launch the ShakeNbake Cloud website at shakenbake.mobi
-2. Multi-tenant workspace management with Clerk auth
-3. Report ingestion API for the cloud-client SDK
-4. Dashboard for viewing/managing bug reports, apps, and team
-5. Server-side audio transcription via OpenAI Whisper
-6. Issue tracker forwarding (Linear first)
-7. Stripe billing ($10/mo per workspace)
+1. Deploy a working SaaS at shakenbake.mobi on Vercel
+2. Clerk-based auth with org-scoped multi-tenancy (workspaces)
+3. Convex backend for real-time data, file storage, and functions
+4. Report ingestion API for SDK integration
+5. Dashboard for viewing and managing bug reports
 
-## Features (Prioritized)
-### P0 - MVP Launch
-- Clerk auth (sign-up, sign-in, organization/workspace management)
-- App management (create apps, generate scoped API keys)
-- Report ingestion API (POST /api/reports)
-- Report viewer dashboard (list + detail view with screenshot, annotations, context)
-- Landing/marketing page
+## MVP Features (P0)
+- Landing page with sign-up CTA
+- Clerk auth (sign-up, sign-in, org creation)
+- App management (create apps, generate API keys)
+- Report ingestion endpoint (POST with API key auth)
+- Report list + detail view (screenshot, context, annotations)
+- Basic dashboard layout
 
-### P1 - Core Value
-- Audio transcription (Whisper integration)
-- Issue tracker forwarding (Linear)
-- Team management (invite, roles)
+## P1 Features
+- Audio transcription (OpenAI Whisper)
+- Linear issue forwarding
+- Team member management (Clerk orgs)
 
-### P2 - Monetization
-- Stripe billing integration
-- Workspace settings page
+## P2 Features
+- Stripe billing ($10/mo per workspace)
+- Workspace settings
+- Usage analytics
 
 ## Technical Constraints
-- Monorepo already uses Yarn workspaces + Turborepo
-- Must integrate with existing @shakenbake/core types and @shakenbake/cloud-client SDK
-- Next.js App Router (not Pages Router)
-- Convex for backend (USER DECISION - replaces Postgres+Prisma from original PRD)
-- Clerk for auth with multi-tenancy via organizations
-- Deploy to Vercel at shakenbake.mobi
-- Convex deployment mode: cloud-live (production)
+- Must work within existing Turborepo + Yarn monorepo
+- Must use Next.js App Router (not Pages Router)
+- Convex in cloud-live mode (production)
+- Domain: shakenbake.mobi
 
-## Integrations Required
-- Clerk (auth + organizations)
-- Convex (database + backend functions)
-- Vercel (hosting + deployment)
-- Vercel Blob (file storage for screenshots/audio)
-- OpenAI Whisper (audio transcription)
+## Integrations
+- Clerk (auth)
+- Convex (backend/db/storage)
+- Vercel (hosting)
 - Linear API (issue forwarding)
+- OpenAI Whisper API (transcription)
 - Stripe (billing)
-
-## Architecture Change Note
-The original PRD specifies Postgres via Neon/Supabase with Prisma or Drizzle. The user has explicitly chosen Convex instead. This is an immutable decision per WhyCode protocol. Convex replaces Postgres+ORM for all database, real-time, and backend function needs.

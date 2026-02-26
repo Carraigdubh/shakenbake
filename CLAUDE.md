@@ -88,3 +88,16 @@ interface DestinationAdapter {
 ```
 
 The `ShakeNbakeConfig` is the main configuration surface — see PRD Section 4 for full type definition.
+
+## WhyCode (MANDATORY)
+
+Before running `/whycode`, you MUST read ALL of these files:
+- `/Users/martinquinlan/.claude/plugins/cache/whycode-marketplace/whycode/3.0.5/skills/whycode/SKILL.md`
+- `/Users/martinquinlan/.claude/plugins/cache/whycode-marketplace/whycode/3.0.5/skills/whycode/reference/AGENTS.md`
+- `/Users/martinquinlan/.claude/plugins/cache/whycode-marketplace/whycode/3.0.5/skills/whycode/reference/TEMPLATES.md`
+
+Then verify:
+- `docs/whycode/audit/startup-gate.json` has `status: pass`
+- `docs/whycode/audit/startup-audit.json` has `status: pass`
+
+If any file is missing or any gate fails, STOP and report startup incomplete.

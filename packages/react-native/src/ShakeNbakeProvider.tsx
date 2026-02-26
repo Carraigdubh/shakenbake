@@ -46,8 +46,6 @@ import type { UseShakeNbakeResult } from './hooks/useShakeNbake.js';
 
 interface RNModule {
   View: React.ComponentType<Record<string, unknown>>;
-  Text: React.ComponentType<Record<string, unknown>>;
-  TouchableOpacity: React.ComponentType<Record<string, unknown>>;
   Alert: {
     alert(title: string, message?: string, buttons?: Array<{ text: string; onPress?: () => void; style?: string }>): void;
   };
@@ -126,7 +124,11 @@ export function ShakeNbakeProvider(
     async function load(): Promise<void> {
       try {
         const mod = await import('react-native');
-        if (!cancelled) setRn(mod as unknown as RNModule);
+        const resolved: RNModule = {
+          View: (mod as { View?: RNModule['View'] }).View as RNModule['View'],
+          Alert: (mod as { Alert?: RNModule['Alert'] }).Alert as RNModule['Alert'],
+        };
+        if (!cancelled) setRn(resolved);
       } catch {
         // react-native not available — provider still renders children
       }

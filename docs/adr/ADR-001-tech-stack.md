@@ -1,56 +1,35 @@
-# ADR-001: Tech Stack
+# ADR-001: Tech Stack for ShakeNbake Cloud
 
 ## Status
 Accepted
 
 ## Date
-2026-02-20
+2026-02-23
 
 ## Context
-ShakeNbake is a cross-platform bug reporting SDK with a Turborepo monorepo. We need to select a consistent tech stack across packages and the cloud app.
+ShakeNbake Cloud is the hosted SaaS version of the bug reporting SDK. It needs auth, real-time data, file storage, and API endpoints for report ingestion.
 
 ## Decision
-
-### Monorepo & Build
-- **Turborepo v2** with Yarn workspaces
-- **TypeScript** across all packages
-- **changesets** for coordinated versioning
-
-### Mobile SDK
-- **Expo SDK 54** (React Native 0.81, React 19.1)
-- **@shopify/react-native-skia v2.x** for annotation (GPU-accelerated)
-- **react-native-view-shot** for screenshot capture
-- **react-native-shake** for shake detection
-- **expo-audio** for audio recording (stable in SDK 53+)
-- Development builds required (no Expo Go)
-
-### Web SDK
-- **html2canvas-pro** for screenshot capture (oklch color support)
-- **Canvas API** for annotation overlay
-- **MediaRecorder API** for audio recording
-
-### Cloud App (apps/cloud)
-- **Next.js 14+** (App Router)
-- **Clerk** for auth + multi-tenancy (Organizations)
-- **Drizzle ORM** + **Neon** serverless Postgres
-- **Vercel Blob** for file storage
-- **OpenAI Whisper** for audio transcription
-- **Stripe** for billing ($10/mo per workspace)
-- Deployed on **Vercel**
-
-### Integrations
-- **Linear GraphQL API** as primary destination adapter
-- Server-side proxy pattern for API key security on web
+- Next.js 15 (App Router) on Vercel
+- Clerk for authentication and organization-based multi-tenancy
+- Convex for backend (replaces Postgres+Prisma from original PRD)
+- Stripe for billing
+- OpenAI Whisper for audio transcription
+- Convex file storage for screenshots and attachments
 
 ## Consequences
 
 ### Positive
-- Drizzle: faster cold starts, no binary, native Neon driver
-- Expo SDK 54: latest stable, New Architecture default
-- html2canvas-pro: modern CSS color support
-- Turborepo v2: fast builds with task caching
+- Convex provides real-time subscriptions out of the box (great for live dashboard)
+- Convex handles schema, functions, and file storage in one platform
+- Clerk + Convex have official integration
+- Simpler stack (no ORM, no migration files)
 
 ### Negative
-- Yarn instead of pnpm (user preference; slightly larger node_modules)
-- Expo dev builds required (no Expo Go testing)
-- html2canvas cannot capture cross-origin iframes
+- Vendor lock-in to Convex (harder to migrate than Postgres)
+- Different from SDK packages which use generic adapters
+- Convex pricing model differs from self-hosted Postgres
+
+### Neutral
+- Existing SDK packages unaffected (they use DestinationAdapter interface)
+- cloud-client package may need updates for Convex-specific endpoints
