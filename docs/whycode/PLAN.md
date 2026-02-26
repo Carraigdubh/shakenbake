@@ -1,6 +1,6 @@
-<plan id="01-01" linear-id="SHA-5">
-  <name>Next.js 15 + Tailwind + shadcn/ui Scaffold</name>
-  <type>standard</type>
+<plan id="01-02" linear-id="SHA-6">
+  <name>Convex Backend Setup + Schema</name>
+  <type>backend</type>
   <phase>1</phase>
 
   <completion-contract>
@@ -22,6 +22,7 @@
     <testing>vitest</testing>
     <auth>clerk</auth>
     <database>convex</database>
+    <convex-mode>cloud-live</convex-mode>
     <hosting>vercel</hosting>
     <ui>shadcn/ui + tailwindcss</ui>
   </immutable-decisions>
@@ -55,118 +56,156 @@
   </final-verification>
 
   <context>
-    This is a BROWNFIELD monorepo. The apps/cloud/ directory currently has:
-    - A placeholder package.json with echo-only scripts
-    - A placeholder page.tsx with "Coming soon" text
-    - A tsconfig.json configured for basic React/JSX
+    Plan 01-01 is COMPLETE. apps/cloud/ now has:
+    - Working Next.js 15 with React 19, App Router
+    - Tailwind CSS v4 with @tailwindcss/postcss
+    - shadcn/ui (new-york style) with Button, Card, Input components
+    - ESLint flat config, TypeScript with @/* path aliases
+    - Full monorepo integration (turbo build/typecheck/lint all pass)
+    - 142 existing tests pass
 
-    The monorepo root uses:
-    - yarn 1.22.22 with workspaces (packages/*, apps/*, examples/*)
-    - turbo.json with build/dev/lint/typecheck/test tasks
-    - tsconfig.base.json with ES2022 target, strict mode
+    This plan adds Convex as the backend and Clerk for auth. Key integration points:
+    - Convex + Clerk have an official integration pattern
+    - ConvexProviderWithClerk wraps the app with both providers
+    - Clerk middleware protects /dashboard/* routes
+    - Convex auth.config.ts configures Clerk as the auth provider
 
-    Reference: examples/nextjs-app/ has a working Next.js setup in this monorepo
-    with transpilePackages and webpack crypto fallback configuration.
+    IMPORTANT NOTES FOR CONVEX SETUP:
+    - Convex mode is cloud-live (PRODUCTION). Be careful with schema changes.
+    - The Convex CLI (npx convex) may require interactive login. If it does,
+      use completion-mode partial and list CONVEX_DEPLOYMENT as a requirement.
+    - If npx convex dev --once fails due to auth, the schema and provider code
+      should still be written correctly so it works once env vars are set.
+    - Add convex to apps/cloud/package.json dependencies
+    - Add @clerk/nextjs to apps/cloud/package.json dependencies
+    - The ConvexClerkProvider pattern uses useAuth from @clerk/nextjs
 
-    IMPORTANT: The root workspace name in package.json may need to be used for
-    filtering turbo builds. Check existing patterns.
+    CLERK MIDDLEWARE PATTERN (Next.js 15):
+    - Create src/middleware.ts (not app/middleware.ts)
+    - Use clerkMiddleware() from @clerk/nextjs/server
+    - Protect /dashboard/* routes, allow /, /sign-in, /sign-up as public
 
-    NOTE: When initializing shadcn/ui, you may need to create the components.json
-    manually if the interactive CLI doesn't work in this context. Use the shadcn
-    docs as reference. Add components individually with npx shadcn@latest add [component].
+    CONVEX SCHEMA TABLES:
+    - organizations: { clerkOrgId (indexed), name, createdAt }
+    - apps: { orgId (indexed), name, platform, createdAt }
+    - apiKeys: { appId (indexed), orgId (indexed), key (indexed), isActive, createdAt }
+    - reports: { appId (indexed), orgId (indexed), externalId, title, description,
+        severity, category, screenshotAnnotatedId, screenshotOriginalId,
+        audioId (optional), audioTranscript (optional), context, customMetadata (optional),
+        forwardedIssueUrl (optional), forwardedIssueId (optional), createdAt }
   </context>
 
   <tasks>
-    <task id="task-001" type="auto" linear-id="SHA-5">
-      <name>Initialize Next.js 15 in apps/cloud</name>
+    <task id="task-001" type="auto" linear-id="SHA-6">
+      <name>Install Convex and Clerk, create provider wrapper</name>
       <files>
         apps/cloud/package.json,
-        apps/cloud/next.config.ts,
-        apps/cloud/tsconfig.json,
-        apps/cloud/postcss.config.mjs,
-        apps/cloud/tailwind.config.ts,
-        apps/cloud/src/app/layout.tsx,
-        apps/cloud/src/app/page.tsx,
-        apps/cloud/src/app/globals.css
+        apps/cloud/src/components/providers.tsx,
+        apps/cloud/src/app/layout.tsx
       </files>
       <action>
-        1. Replace apps/cloud/package.json:
-           - name: "@shakenbake/cloud"
-           - Add dependencies: next@^15, react@^19, react-dom@^19, tailwindcss@^4, @tailwindcss/postcss
-           - Add devDependencies: typescript, @types/react, @types/react-dom, @types/node, eslint, eslint-config-next
-           - Scripts: dev="next dev", build="next build", start="next start", lint="next lint", typecheck="tsc --noEmit"
-           - Add @shakenbake/core as workspace dependency
-
-        2. Replace apps/cloud/tsconfig.json with Next.js-compatible config:
-           - Use "extends": "../../tsconfig.base.json" if compatible, or fresh Next.js tsconfig
-           - Include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"]
-           - Paths: {"@/*": ["./src/*"]}
-           - jsx: "preserve", module: "esnext", moduleResolution: "bundler"
-
-        3. Create apps/cloud/next.config.ts:
-           - transpilePackages: ["@shakenbake/core"]
-
-        4. Create apps/cloud/postcss.config.mjs for Tailwind v4:
-           - Use @tailwindcss/postcss plugin
-
-        5. Create apps/cloud/src/app/globals.css:
-           - @import "tailwindcss" for v4
-           - Add CSS custom properties for shadcn theme
-
-        6. Update apps/cloud/src/app/layout.tsx:
-           - Import globals.css
-           - Basic html/body structure with metadata
-
-        7. Update apps/cloud/src/app/page.tsx:
-           - Simple "ShakeNbake Cloud" heading with Tailwind classes to verify styling works
-
-        8. Run yarn install from root to link dependencies
-      </action>
-      <verify>cd apps/cloud &amp;&amp; yarn build</verify>
-      <done>Next.js 15 builds successfully. Dev server starts. Tailwind classes render styled content.</done>
-    </task>
-
-    <task id="task-002" type="auto" linear-id="SHA-5">
-      <name>Install and configure shadcn/ui</name>
-      <files>
-        apps/cloud/components.json,
-        apps/cloud/src/lib/utils.ts,
-        apps/cloud/src/components/ui/button.tsx,
-        apps/cloud/src/components/ui/card.tsx,
-        apps/cloud/src/components/ui/input.tsx
-      </files>
-      <action>
-        1. Install shadcn/ui dependencies: class-variance-authority, clsx, tailwind-merge, lucide-react
-        2. Create apps/cloud/src/lib/utils.ts with cn() helper (clsx + tailwind-merge)
-        3. Create apps/cloud/components.json for shadcn configuration:
-           - style: "new-york"
-           - rsc: true
-           - tsx: true
-           - aliases: { components: "@/components", utils: "@/lib/utils", ui: "@/components/ui", hooks: "@/hooks", lib: "@/lib" }
-        4. Add base shadcn components: button, card, input
-           - Use npx shadcn@latest add button card input OR create manually from shadcn docs
-        5. Verify Button renders in page.tsx with correct styling
+        1. Add dependencies to apps/cloud/package.json:
+           - convex (latest)
+           - @clerk/nextjs (latest)
+        2. Run yarn install from monorepo root
+        3. Create apps/cloud/src/components/providers.tsx:
+           - "use client" directive (providers need client context)
+           - Import ConvexProviderWithClerk from "convex/react-clerk"
+           - Import ClerkProvider, useAuth from "@clerk/nextjs"
+           - Import ConvexReactClient from "convex/react"
+           - Create convex client: new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+           - Export Providers component that wraps children in ClerkProvider > ConvexProviderWithClerk
+           - Pass useAuth to ConvexProviderWithClerk client prop
+        4. Update apps/cloud/src/app/layout.tsx:
+           - Import and wrap children with Providers component
+           - Keep existing metadata and globals.css import
+        5. Add env var guards: if NEXT_PUBLIC_CONVEX_URL is missing, show helpful error
       </action>
       <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
-      <done>shadcn/ui components importable. Button, Card, Input render with Tailwind styling. TypeScript compiles clean.</done>
+      <done>Convex and Clerk packages installed. Providers.tsx wraps app with ConvexProviderWithClerk. TypeScript compiles.</done>
     </task>
 
-    <task id="task-003" type="auto" linear-id="SHA-5">
-      <name>Verify monorepo integration and turbo pipeline</name>
+    <task id="task-002" type="auto" linear-id="SHA-6">
+      <name>Define Convex schema and auth config</name>
       <files>
-        turbo.json,
-        apps/cloud/package.json
+        apps/cloud/convex/schema.ts,
+        apps/cloud/convex/auth.config.ts,
+        apps/cloud/convex/tsconfig.json
       </files>
       <action>
-        1. Verify turbo.json build outputs include ".next/**" (already configured)
-        2. Ensure apps/cloud/package.json has @shakenbake/core dependency
-        3. Run full monorepo build: yarn build (turbo run build)
-        4. Verify apps/cloud builds in correct dependency order (core first, then cloud)
-        5. Test that turbo caching works (second build should be faster)
-        6. Ensure yarn typecheck and yarn lint work for apps/cloud
+        1. Create apps/cloud/convex/ directory
+        2. Create apps/cloud/convex/tsconfig.json:
+           - { "compilerOptions": { "allowJs": true, "strict": true } }
+           (Convex uses its own TS config for the convex/ directory)
+        3. Create apps/cloud/convex/auth.config.ts:
+           - Export default auth config with Clerk provider
+           - Use the pattern: export default { providers: [{ domain: process.env.CLERK_JWT_ISSUER_DOMAIN, applicationID: "convex" }] }
+           - Or use the simpler pattern if Convex docs show it
+        4. Create apps/cloud/convex/schema.ts with defineSchema and defineTable:
+           - organizations table:
+             * clerkOrgId: v.string() (indexed)
+             * name: v.string()
+             * createdAt: v.number()
+           - apps table:
+             * orgId: v.id("organizations") (indexed)
+             * name: v.string()
+             * platform: v.union(v.literal("ios"), v.literal("android"), v.literal("web"), v.literal("universal"))
+             * createdAt: v.number()
+           - apiKeys table:
+             * appId: v.id("apps") (indexed)
+             * orgId: v.id("organizations") (indexed)
+             * key: v.string() (indexed)
+             * isActive: v.boolean()
+             * createdAt: v.number()
+           - reports table:
+             * appId: v.id("apps") (indexed)
+             * orgId: v.id("organizations") (indexed)
+             * externalId: v.string()
+             * title: v.string()
+             * description: v.string()
+             * severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical"))
+             * category: v.union(v.literal("bug"), v.literal("ui"), v.literal("crash"), v.literal("performance"), v.literal("other"))
+             * screenshotStorageId: v.optional(v.id("_storage"))
+             * screenshotOriginalStorageId: v.optional(v.id("_storage"))
+             * audioStorageId: v.optional(v.id("_storage"))
+             * audioTranscript: v.optional(v.string())
+             * context: v.any()
+             * customMetadata: v.optional(v.any())
+             * forwardedIssueUrl: v.optional(v.string())
+             * forwardedIssueId: v.optional(v.string())
+             * createdAt: v.number()
+        5. Ensure all tables have proper indexes defined
+      </action>
+      <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
+      <done>Convex schema defines organizations, apps, apiKeys, reports tables with proper types and indexes. Auth config references Clerk. TypeScript compiles.</done>
+    </task>
+
+    <task id="task-003" type="auto" linear-id="SHA-6">
+      <name>Create Clerk middleware and verify full build</name>
+      <files>
+        apps/cloud/src/middleware.ts
+      </files>
+      <action>
+        1. Create apps/cloud/src/middleware.ts:
+           - Import clerkMiddleware, createRouteMatcher from "@clerk/nextjs/server"
+           - Define public routes: /, /sign-in(.*), /sign-up(.*), /api/ingest(.*)
+           - Use clerkMiddleware with route protection:
+             * If route is NOT public, call auth.protect()
+           - Export config with matcher excluding static files and internals
+        2. Run full verification suite:
+           - yarn typecheck (all packages)
+           - yarn lint (all packages)
+           - yarn test (all tests pass)
+           - yarn build (all packages build)
+           - Smoke: dev server starts without crashing
+
+        NOTE: If Convex env vars (NEXT_PUBLIC_CONVEX_URL) or Clerk env vars
+        (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY) are not set,
+        the app should still BUILD successfully. Runtime behavior may differ.
+        This is acceptable for partial completion mode.
       </action>
       <verify>yarn build &amp;&amp; yarn typecheck</verify>
-      <done>Full monorepo build succeeds including cloud app. Typecheck passes across all packages. Turbo pipeline respects dependency order.</done>
+      <done>Clerk middleware protects /dashboard/* routes. Full monorepo build and typecheck pass. Dev server starts (may show warnings about missing env vars but does not crash).</done>
     </task>
   </tasks>
 
@@ -177,8 +216,11 @@
     □ yarn lint passed (exit code 0)
     □ yarn test passed (all existing tests still pass)
     □ yarn build passed (exit code 0)
-    □ Smoke: cd apps/cloud && yarn dev starts Next.js without crashing
+    □ Smoke: cd apps/cloud and yarn dev starts without crashing
 
-    If ANY failed: FIX and re-verify. Do NOT output PLAN_COMPLETE.
+    If Convex/Clerk env vars are missing, app may show runtime warnings but
+    MUST NOT crash. Build and typecheck MUST pass regardless.
+
+    If ANY verification fails: FIX and re-verify. Do NOT output PLAN_COMPLETE.
   </on-complete>
 </plan>
