@@ -216,3 +216,25 @@
 - **Result**: PASS
 - **Tests**: 407/407 passing
 - **Iterations**: 1
+
+---
+
+## 2026-02-26T11:30:00Z - Plan 03-01: Auth Pages + Dashboard Layout
+
+**Agent**: whycode:frontend-web-agent | **Iteration**: 1 | **Outcome**: PLAN_COMPLETE
+
+### Tasks Completed
+- **task-001**: Created Clerk sign-in and sign-up catch-all routes with centered layout and fallbackRedirectUrl to /dashboard
+- **task-002**: Built responsive dashboard layout with sidebar (Dashboard, Apps, Reports nav), header (OrganizationSwitcher, UserButton), mobile hamburger toggle, and DashboardShell client wrapper
+- **task-003**: Replaced placeholder page with full marketing landing page (hero, 4 features, how-it-works, pricing, footer) as a pure server component
+
+### Verification
+- typecheck: PASS (exit 0) - all 8 packages
+- lint: PASS (exit 0) - all 8 packages
+- test: PASS (407 total: 80 core + 97 linear + 142 web + 88 react-native)
+- build: PASS (exit 0) - all 8 packages
+- smoke: PASS (Next.js dev server starts, Ready in 1630ms)
+
+### Notes
+- Dashboard layout uses `force-dynamic` to prevent static prerendering (Clerk components require ClerkProvider at runtime)
+- Landing page is statically prerendered (server component, no client JS)
