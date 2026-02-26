@@ -1,12 +1,12 @@
 {
-  "status": "in_progress",
-  "currentPhase": 6,
+  "status": "complete",
+  "currentPhase": 8,
   "currentPlan": null,
   "loopMaxIterations": 30,
   "completionMode": "partial",
   "agentTeamsMode": "turbo-teams",
   "runId": "2026-02-23T14-41-21Z",
-  "lastUpdatedAt": "2026-02-26T13:05:00Z",
+  "lastUpdatedAt": "2026-02-26T14:10:00Z",
   "linearTeamId": "647cf1e6-4c6a-43b7-acb1-fcbb4aa0c091",
   "integrations": {
     "linearEnabled": true,
@@ -14,5 +14,7 @@
     "linearTeamId": "647cf1e6-4c6a-43b7-acb1-fcbb4aa0c091",
     "context7Enabled": false
   },
-  "completedPlans": ["01-01", "01-02", "02-01", "02-02", "03-01", "03-02", "03-03", "04-01"]
+  "completedPlans": ["01-01", "01-02", "02-01", "02-02", "03-01", "03-02", "03-03", "04-01"],
+  "securityReviewComplete": true,
+  "handoffComplete": true
 }
