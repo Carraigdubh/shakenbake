@@ -1,7 +1,7 @@
-<plan id="01-02" linear-id="SHA-6">
-  <name>Convex Backend Setup + Schema</name>
+<plan id="02-01" linear-id="SHA-7">
+  <name>Convex Functions - Organizations and Apps</name>
   <type>backend</type>
-  <phase>1</phase>
+  <phase>2</phase>
 
   <completion-contract>
     <rule>You CANNOT output PLAN_COMPLETE until ALL verifications pass</rule>
@@ -14,9 +14,7 @@
 
   <immutable-decisions>
     <package-manager>yarn</package-manager>
-    <package-manager-version>1.22.22</package-manager-version>
     <framework>next</framework>
-    <framework-version>15</framework-version>
     <monorepo>turborepo</monorepo>
     <language>typescript</language>
     <testing>vitest</testing>
@@ -24,13 +22,11 @@
     <database>convex</database>
     <convex-mode>cloud-live</convex-mode>
     <hosting>vercel</hosting>
-    <ui>shadcn/ui + tailwindcss</ui>
   </immutable-decisions>
 
   <pm-commands>
     <install>yarn install</install>
     <add-dep>yarn add</add-dep>
-    <add-dev-dep>yarn add --dev</add-dev-dep>
     <build>yarn build</build>
     <test>yarn test</test>
     <typecheck>yarn typecheck</typecheck>
@@ -51,161 +47,138 @@
     <check name="smoke" command="cd apps/cloud &amp;&amp; timeout 15 yarn dev 2>&amp;1 | head -30" required="true">
       <fail-if-contains>Error:</fail-if-contains>
       <fail-if-contains>TypeError</fail-if-contains>
-      <description>Next.js dev server must start without crashing</description>
     </check>
   </final-verification>
 
   <context>
-    Plan 01-01 is COMPLETE. apps/cloud/ now has:
-    - Working Next.js 15 with React 19, App Router
-    - Tailwind CSS v4 with @tailwindcss/postcss
-    - shadcn/ui (new-york style) with Button, Card, Input components
-    - ESLint flat config, TypeScript with @/* path aliases
-    - Full monorepo integration (turbo build/typecheck/lint all pass)
-    - 142 existing tests pass
+    Plans 01-01 and 01-02 are COMPLETE. apps/cloud/ now has:
+    - Working Next.js 15 with React 19, Tailwind v4, shadcn/ui
+    - Convex installed with schema.ts defining: organizations, apps, apiKeys, reports
+    - Clerk installed with middleware.ts protecting /dashboard/*
+    - ConvexProviderWithClerk wrapping the app
+    - All monorepo builds, typechecks, lints, tests pass (142 tests)
 
-    This plan adds Convex as the backend and Clerk for auth. Key integration points:
-    - Convex + Clerk have an official integration pattern
-    - ConvexProviderWithClerk wraps the app with both providers
-    - Clerk middleware protects /dashboard/* routes
-    - Convex auth.config.ts configures Clerk as the auth provider
+    The Convex schema (apps/cloud/convex/schema.ts) already defines:
+    - organizations: clerkOrgId (indexed), name, createdAt
+    - apps: orgId (indexed), name, platform, createdAt
+    - apiKeys: appId (indexed), orgId (indexed), key (indexed), isActive, createdAt
+    - reports: full report schema with storage IDs
 
-    IMPORTANT NOTES FOR CONVEX SETUP:
-    - Convex mode is cloud-live (PRODUCTION). Be careful with schema changes.
-    - The Convex CLI (npx convex) may require interactive login. If it does,
-      use completion-mode partial and list CONVEX_DEPLOYMENT as a requirement.
-    - If npx convex dev --once fails due to auth, the schema and provider code
-      should still be written correctly so it works once env vars are set.
-    - Add convex to apps/cloud/package.json dependencies
-    - Add @clerk/nextjs to apps/cloud/package.json dependencies
-    - The ConvexClerkProvider pattern uses useAuth from @clerk/nextjs
+    This plan creates the Convex server functions (queries/mutations) for:
+    1. Organization sync (upsert from Clerk context)
+    2. App CRUD (create, list, get, delete with cascading)
+    3. API key generation and validation
 
-    CLERK MIDDLEWARE PATTERN (Next.js 15):
-    - Create src/middleware.ts (not app/middleware.ts)
-    - Use clerkMiddleware() from @clerk/nextjs/server
-    - Protect /dashboard/* routes, allow /, /sign-in, /sign-up as public
+    IMPORTANT: These are Convex server functions. They use:
+    - import { query, mutation, internalQuery } from "./_generated/server"
+    - import { v } from "convex/values" for argument validation
+    - ctx.auth.getUserIdentity() for Clerk auth context
+    - ctx.db.query("tableName").withIndex("by_field", q => q.eq("field", value))
+    - ctx.db.insert("tableName", { ... })
+    - ctx.db.patch(id, { ... })
+    - ctx.db.delete(id)
 
-    CONVEX SCHEMA TABLES:
-    - organizations: { clerkOrgId (indexed), name, createdAt }
-    - apps: { orgId (indexed), name, platform, createdAt }
-    - apiKeys: { appId (indexed), orgId (indexed), key (indexed), isActive, createdAt }
-    - reports: { appId (indexed), orgId (indexed), externalId, title, description,
-        severity, category, screenshotAnnotatedId, screenshotOriginalId,
-        audioId (optional), audioTranscript (optional), context, customMetadata (optional),
-        forwardedIssueUrl (optional), forwardedIssueId (optional), createdAt }
+    DO NOT run npx convex dev or npx convex deploy (cloud-live safety).
+    Just write the function files and ensure they compile.
   </context>
 
   <tasks>
-    <task id="task-001" type="auto" linear-id="SHA-6">
-      <name>Install Convex and Clerk, create provider wrapper</name>
-      <files>
-        apps/cloud/package.json,
-        apps/cloud/src/components/providers.tsx,
-        apps/cloud/src/app/layout.tsx
-      </files>
+    <task id="task-001" type="auto" linear-id="SHA-7">
+      <name>Organization sync functions</name>
+      <files>apps/cloud/convex/organizations.ts</files>
       <action>
-        1. Add dependencies to apps/cloud/package.json:
-           - convex (latest)
-           - @clerk/nextjs (latest)
-        2. Run yarn install from monorepo root
-        3. Create apps/cloud/src/components/providers.tsx:
-           - "use client" directive (providers need client context)
-           - Import ConvexProviderWithClerk from "convex/react-clerk"
-           - Import ClerkProvider, useAuth from "@clerk/nextjs"
-           - Import ConvexReactClient from "convex/react"
-           - Create convex client: new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
-           - Export Providers component that wraps children in ClerkProvider > ConvexProviderWithClerk
-           - Pass useAuth to ConvexProviderWithClerk client prop
-        4. Update apps/cloud/src/app/layout.tsx:
-           - Import and wrap children with Providers component
-           - Keep existing metadata and globals.css import
-        5. Add env var guards: if NEXT_PUBLIC_CONVEX_URL is missing, show helpful error
+        Create apps/cloud/convex/organizations.ts with:
+
+        1. ensureOrganization mutation:
+           - Args: none (gets org from auth context)
+           - Get user identity from ctx.auth.getUserIdentity()
+           - Extract org ID from identity claims (Clerk puts it in the token)
+           - Check if org exists via organizations.by_clerkOrgId index
+           - If exists: return existing org ID
+           - If not: insert new org record, return new ID
+           - Throw if no auth context
+
+        2. getOrganization query:
+           - Args: { clerkOrgId: v.string() }
+           - Look up by index, return org or null
+
+        3. getOrganizationById query:
+           - Args: { orgId: v.id("organizations") }
+           - Direct get by ID, return org
+
+        All functions must use proper Convex patterns (query/mutation from _generated/server).
       </action>
       <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
-      <done>Convex and Clerk packages installed. Providers.tsx wraps app with ConvexProviderWithClerk. TypeScript compiles.</done>
+      <done>Organization functions compile. ensureOrganization upserts, getOrganization queries by clerkOrgId.</done>
     </task>
 
-    <task id="task-002" type="auto" linear-id="SHA-6">
-      <name>Define Convex schema and auth config</name>
-      <files>
-        apps/cloud/convex/schema.ts,
-        apps/cloud/convex/auth.config.ts,
-        apps/cloud/convex/tsconfig.json
-      </files>
+    <task id="task-002" type="auto" linear-id="SHA-7">
+      <name>App CRUD functions</name>
+      <files>apps/cloud/convex/apps.ts</files>
       <action>
-        1. Create apps/cloud/convex/ directory
-        2. Create apps/cloud/convex/tsconfig.json:
-           - { "compilerOptions": { "allowJs": true, "strict": true } }
-           (Convex uses its own TS config for the convex/ directory)
-        3. Create apps/cloud/convex/auth.config.ts:
-           - Export default auth config with Clerk provider
-           - Use the pattern: export default { providers: [{ domain: process.env.CLERK_JWT_ISSUER_DOMAIN, applicationID: "convex" }] }
-           - Or use the simpler pattern if Convex docs show it
-        4. Create apps/cloud/convex/schema.ts with defineSchema and defineTable:
-           - organizations table:
-             * clerkOrgId: v.string() (indexed)
-             * name: v.string()
-             * createdAt: v.number()
-           - apps table:
-             * orgId: v.id("organizations") (indexed)
-             * name: v.string()
-             * platform: v.union(v.literal("ios"), v.literal("android"), v.literal("web"), v.literal("universal"))
-             * createdAt: v.number()
-           - apiKeys table:
-             * appId: v.id("apps") (indexed)
-             * orgId: v.id("organizations") (indexed)
-             * key: v.string() (indexed)
-             * isActive: v.boolean()
-             * createdAt: v.number()
-           - reports table:
-             * appId: v.id("apps") (indexed)
-             * orgId: v.id("organizations") (indexed)
-             * externalId: v.string()
-             * title: v.string()
-             * description: v.string()
-             * severity: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical"))
-             * category: v.union(v.literal("bug"), v.literal("ui"), v.literal("crash"), v.literal("performance"), v.literal("other"))
-             * screenshotStorageId: v.optional(v.id("_storage"))
-             * screenshotOriginalStorageId: v.optional(v.id("_storage"))
-             * audioStorageId: v.optional(v.id("_storage"))
-             * audioTranscript: v.optional(v.string())
-             * context: v.any()
-             * customMetadata: v.optional(v.any())
-             * forwardedIssueUrl: v.optional(v.string())
-             * forwardedIssueId: v.optional(v.string())
-             * createdAt: v.number()
-        5. Ensure all tables have proper indexes defined
+        Create apps/cloud/convex/apps.ts with:
+
+        1. createApp mutation:
+           - Args: { name: v.string(), platform: v.union(...), orgId: v.id("organizations") }
+           - Verify auth context
+           - Insert app record with orgId, name, platform, createdAt
+           - Return new app ID
+
+        2. listApps query:
+           - Args: { orgId: v.id("organizations") }
+           - Query apps.by_orgId index
+           - Return array of apps
+
+        3. getApp query:
+           - Args: { appId: v.id("apps") }
+           - Get app by ID
+           - Return app or null
+
+        4. deleteApp mutation:
+           - Args: { appId: v.id("apps") }
+           - Verify auth
+           - Delete all apiKeys for this app (query by appId index, delete each)
+           - Delete the app record
+           - Return success
       </action>
       <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
-      <done>Convex schema defines organizations, apps, apiKeys, reports tables with proper types and indexes. Auth config references Clerk. TypeScript compiles.</done>
+      <done>App CRUD functions compile. Create, list, get, delete with cascading key deletion.</done>
     </task>
 
-    <task id="task-003" type="auto" linear-id="SHA-6">
-      <name>Create Clerk middleware and verify full build</name>
-      <files>
-        apps/cloud/src/middleware.ts
-      </files>
+    <task id="task-003" type="auto" linear-id="SHA-7">
+      <name>API key generation and validation functions</name>
+      <files>apps/cloud/convex/apiKeys.ts</files>
       <action>
-        1. Create apps/cloud/src/middleware.ts:
-           - Import clerkMiddleware, createRouteMatcher from "@clerk/nextjs/server"
-           - Define public routes: /, /sign-in(.*), /sign-up(.*), /api/ingest(.*)
-           - Use clerkMiddleware with route protection:
-             * If route is NOT public, call auth.protect()
-           - Export config with matcher excluding static files and internals
-        2. Run full verification suite:
-           - yarn typecheck (all packages)
-           - yarn lint (all packages)
-           - yarn test (all tests pass)
-           - yarn build (all packages build)
-           - Smoke: dev server starts without crashing
+        Create apps/cloud/convex/apiKeys.ts with:
 
-        NOTE: If Convex env vars (NEXT_PUBLIC_CONVEX_URL) or Clerk env vars
-        (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY) are not set,
-        the app should still BUILD successfully. Runtime behavior may differ.
-        This is acceptable for partial completion mode.
+        1. generateApiKey mutation:
+           - Args: { appId: v.id("apps"), orgId: v.id("organizations") }
+           - Verify auth
+           - Generate key: "snb_app_" + 32 random hex chars
+           - Use crypto-safe random: Array.from({length: 32}, () => Math.random().toString(16).charAt(2)).join("")
+             OR use a simple random approach that works in Convex runtime
+           - Insert into apiKeys table with isActive: true
+           - Return the full key (shown to user once)
+
+        2. listApiKeys query:
+           - Args: { appId: v.id("apps") }
+           - Query by appId index
+           - Return keys with key field masked (show only last 4 chars): "snb_app_****...XXXX"
+
+        3. revokeApiKey mutation:
+           - Args: { keyId: v.id("apiKeys") }
+           - Verify auth
+           - Patch isActive to false
+
+        4. validateApiKey (internal query - not exposed to client):
+           - Use internalQuery from _generated/server
+           - Args: { key: v.string() }
+           - Look up by key index
+           - Return { appId, orgId, isActive } if found, null if not
+           - This will be used by the HTTP ingestion endpoint in plan 02-02
       </action>
-      <verify>yarn build &amp;&amp; yarn typecheck</verify>
-      <done>Clerk middleware protects /dashboard/* routes. Full monorepo build and typecheck pass. Dev server starts (may show warnings about missing env vars but does not crash).</done>
+      <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit &amp;&amp; yarn build</verify>
+      <done>API key functions compile. Generate with snb_app_ prefix, list with masking, revoke, internal validate. Full build passes.</done>
     </task>
   </tasks>
 
@@ -216,11 +189,8 @@
     □ yarn lint passed (exit code 0)
     □ yarn test passed (all existing tests still pass)
     □ yarn build passed (exit code 0)
-    □ Smoke: cd apps/cloud and yarn dev starts without crashing
+    □ Smoke: dev server starts without crashing
 
-    If Convex/Clerk env vars are missing, app may show runtime warnings but
-    MUST NOT crash. Build and typecheck MUST pass regardless.
-
-    If ANY verification fails: FIX and re-verify. Do NOT output PLAN_COMPLETE.
+    If ANY failed: FIX and re-verify. Do NOT output PLAN_COMPLETE.
   </on-complete>
 </plan>
