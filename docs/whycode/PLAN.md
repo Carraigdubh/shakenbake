@@ -1,5 +1,5 @@
-<plan id="03-02" linear-id="SHA-10">
-  <name>Apps Management Pages</name>
+<plan id="03-03" linear-id="SHA-11">
+  <name>Reports Pages</name>
   <type>frontend</type>
   <phase>3</phase>
 
@@ -45,124 +45,124 @@
   </final-verification>
 
   <context>
-    Plans 01-01 through 03-01 are COMPLETE. apps/cloud/ now has:
-    - Next.js 15, Tailwind v4, shadcn/ui (Button, Card, Input)
-    - Convex schema + functions: organizations, apps (CRUD), apiKeys (generate/list/revoke/validate)
+    Plans 01-01 through 03-02 are COMPLETE. apps/cloud/ now has:
+    - Next.js 15, Tailwind v4, shadcn/ui (Button, Card, Input, Dialog, Select, Badge, Label, Table, Tooltip)
+    - Convex schema + functions: organizations, apps (CRUD), apiKeys (generate/list/revoke/validate), reports (ingest/list/get/counts)
     - Clerk auth pages, dashboard layout with sidebar/header
     - Landing page, report ingestion HTTP endpoint
+    - Apps management pages: list with create dialog, detail with API keys, delete with confirmation
     - All builds/typechecks/tests pass
 
-    Existing Convex functions to use (in apps/cloud/convex/):
-    - apps.ts: createApp, listApps, getApp, deleteApp
-    - apiKeys.ts: generateApiKey, listApiKeys, revokeApiKey
-    - organizations.ts: ensureOrganization
+    Existing Convex functions for reports (in apps/cloud/convex/reports.ts):
+    - listReports({ orgId, appId?, severity?, paginationOpts }) — paginated, ordered desc
+    - getReport({ reportId }) — returns report with resolved storage URLs (screenshotUrl, screenshotOriginalUrl, audioUrl)
+    - getReportCounts({ orgId }) — returns { total, low, medium, high, critical }
 
-    Existing components:
-    - src/components/ui/: button, card, input (shadcn)
-    - src/components/: sidebar, header, dashboard-shell, providers
+    Other Convex functions available:
+    - apps.ts: listApps({ orgId }) — for app filter dropdown
+    - organizations.ts: getOrganization({ clerkOrgId }) — to resolve Clerk org to Convex org
+
+    Existing components (src/components/):
+    - ui/: button, card, input, dialog, select, badge, label, table, tooltip
+    - app-card.tsx, api-key-display.tsx, sidebar.tsx, header.tsx, dashboard-shell.tsx, providers.tsx
 
     Dashboard layout at /dashboard/ with sidebar nav (Apps, Reports links).
 
-    This plan creates the Apps management UI:
-    1. Apps list page with create dialog
-    2. App detail page with API key management
-    3. Delete app with confirmation
+    This plan creates the Reports viewing UI:
+    1. Reports list page with filters (app, severity) and pagination
+    2. Report detail page with screenshot viewer, audio player, context data
+    3. Dashboard overview with report count summary cards
 
     IMPORTANT NOTES:
     - Use Convex React hooks: useQuery, useMutation from "convex/react"
-    - Import API references: import { api } from "../../convex/_generated/api"
-      The api object has api.apps.listApps, api.apps.createApp, etc.
-    - The api.ts stub was created in plan 02-02 - READ it to see available exports
-    - For organization context, use ensureOrganization mutation on dashboard load
-      or get orgId from Clerk's useOrganization hook
-    - Pages under /dashboard/ are client components (need useQuery, useMutation)
-    - Add additional shadcn components as needed: dialog, select, badge, dropdown-menu, toast
-      Run: cd apps/cloud && npx shadcn@latest add [component]
-    - For clipboard copy: use navigator.clipboard.writeText()
-    - Tailwind v4 - use standard utility classes
+    - Import API references: import { api } from "../../convex/_generated/api" (adjust depth)
+    - For pagination with Convex: use usePaginatedQuery from "convex/react"
+      Usage: const { results, status, loadMore } = usePaginatedQuery(api.reports.listReports, args, { initialNumItems: 25 })
+    - Pages under /dashboard/ are client components (need "use client")
+    - The listReports function uses paginationOptsValidator — pass { numItems: 25, cursor: null } for initial
+    - Screenshots/audio come as URLs from getReport — use <img> and <audio> tags
+    - Severity colors: low=green, medium=yellow, high=orange, critical=red
+    - Category badges: bug, ui, crash, performance, other
+    - Next.js 15: params in dynamic routes is a Promise - use React.use(params) to unwrap
+    - For org context: useOrganization() → getOrganization({ clerkOrgId }) → orgId
+    - Follow existing page patterns from apps/page.tsx (loading, empty, org-select states)
   </context>
 
   <tasks>
-    <task id="task-001" type="auto" linear-id="SHA-10">
-      <name>Apps list page with create dialog</name>
+    <task id="task-001" type="auto" linear-id="SHA-11">
+      <name>Reports list page with filters and pagination</name>
       <files>
-        apps/cloud/src/app/dashboard/apps/page.tsx,
-        apps/cloud/src/components/app-card.tsx
+        apps/cloud/src/app/dashboard/reports/page.tsx,
+        apps/cloud/src/components/report-row.tsx
       </files>
       <action>
-        1. Install needed shadcn components: dialog, select, badge, label
-           cd apps/cloud && npx shadcn@latest add dialog select badge label
-
-        2. Create apps/cloud/src/components/app-card.tsx:
+        1. Create apps/cloud/src/components/report-row.tsx:
            - "use client"
-           - Card showing app name, platform badge, created date
-           - Click navigates to /dashboard/apps/[appId]
-           - Use shadcn Card, Badge components
-           - Platform badge colors: ios=blue, android=green, web=purple, universal=gray
+           - Table row showing: title, app name, severity badge, category badge, date
+           - Click navigates to /dashboard/reports/[reportId]
+           - Severity badge colors: low=green, medium=yellow, high=orange, critical=red
+           - Category as secondary badge
 
-        3. Create apps/cloud/src/app/dashboard/apps/page.tsx:
+        2. Create apps/cloud/src/app/dashboard/reports/page.tsx:
            - "use client"
-           - Use useQuery(api.apps.listApps, { orgId }) to fetch apps
-           - Use useMutation(api.apps.createApp) for creating
-           - Need orgId: use useOrganization() from @clerk/nextjs or ensureOrganization
-           - "Create App" button opens Dialog with:
-             * Name input (required)
-             * Platform select (ios, android, web, universal)
-             * Submit button calls createApp mutation
-           - Display apps as card grid using AppCard component
-           - Empty state: "No apps yet" with create CTA
-           - Loading state while query resolves
+           - Use usePaginatedQuery(api.reports.listReports, { orgId, appId?, severity? }, { initialNumItems: 25 })
+           - Use useQuery(api.apps.listApps, { orgId }) for app filter dropdown
+           - Filter bar: app dropdown (Select), severity dropdown (Select)
+           - Results table with ReportRow components
+           - "Load more" button when status === "CanLoadMore"
+           - Empty state: "No reports yet" with description about SDK integration
+           - Loading state with spinner
+           - Handle no-org state: "Select an organization" prompt
       </action>
       <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
-      <done>Apps list page shows apps in card grid. Create dialog works. TypeScript compiles.</done>
+      <done>Reports list page shows paginated reports with app/severity filters. TypeScript compiles.</done>
     </task>
 
-    <task id="task-002" type="auto" linear-id="SHA-10">
-      <name>App detail page with API key management</name>
+    <task id="task-002" type="auto" linear-id="SHA-11">
+      <name>Report detail page with media viewers</name>
       <files>
-        apps/cloud/src/app/dashboard/apps/[appId]/page.tsx,
-        apps/cloud/src/components/api-key-display.tsx
+        apps/cloud/src/app/dashboard/reports/[reportId]/page.tsx
       </files>
       <action>
-        1. Install needed shadcn components if not already: table, tooltip
-           cd apps/cloud && npx shadcn@latest add table tooltip
-
-        2. Create apps/cloud/src/components/api-key-display.tsx:
+        1. Create apps/cloud/src/app/dashboard/reports/[reportId]/page.tsx:
            - "use client"
-           - Shows masked key: "snb_app_****...XXXX"
-           - Copy button (copies full key if just generated, otherwise shows masked)
-           - Revoke button with confirmation
-           - "Just generated" state: shows full key with prominent copy button + warning "This won't be shown again"
-
-        3. Create apps/cloud/src/app/dashboard/apps/[appId]/page.tsx:
-           - "use client"
-           - Get appId from params
-           - useQuery(api.apps.getApp, { appId }) for app details
-           - useQuery(api.apiKeys.listApiKeys, { appId }) for keys
-           - useMutation(api.apiKeys.generateApiKey) for new keys
-           - useMutation(api.apiKeys.revokeApiKey) for revocation
-           - App info section: name, platform, created date
-           - API Keys section: table of keys with status, created date, actions
-           - "Generate New Key" button - on success, show ApiKeyDisplay in "just generated" mode
-           - Setup instructions: code snippet showing SDK integration
-           - Back link to /dashboard/apps
+           - Get reportId from params (React.use(params))
+           - useQuery(api.reports.getReport, { reportId }) for full report with URLs
+           - Report header: title, severity badge, category badge, date
+           - Screenshot section: if screenshotUrl, show image in Card
+             * Click to view original (screenshotOriginalUrl) in new tab or modal
+             * If no screenshot, show placeholder
+           - Audio section: if audioUrl, show HTML5 audio player
+             * If audioTranscript exists, show transcript text below
+           - Context data section: render report.context as formatted JSON in a code block
+           - Custom metadata section: if customMetadata, render as formatted JSON
+           - Forwarded issue link: if forwardedIssueUrl, show link badge
+           - Back link to /dashboard/reports
+           - Loading state and not-found state
       </action>
       <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
-      <done>App detail shows info + API keys. Generate shows key once. Revoke works. Setup instructions shown.</done>
+      <done>Report detail shows all fields: screenshot, audio, context, metadata. Loading/not-found states work.</done>
     </task>
 
-    <task id="task-003" type="auto" linear-id="SHA-10">
-      <name>Delete app with confirmation</name>
+    <task id="task-003" type="auto" linear-id="SHA-11">
+      <name>Dashboard overview with report counts</name>
       <files>
-        apps/cloud/src/app/dashboard/apps/[appId]/page.tsx
+        apps/cloud/src/app/dashboard/page.tsx
       </files>
       <action>
-        1. Add "Delete App" section to app detail page:
-           - Danger zone area at bottom with red border
-           - Delete button (destructive variant)
-           - Confirmation dialog: "Are you sure? This will delete the app and all its API keys."
-           - On confirm: call deleteApp mutation
-           - On success: redirect to /dashboard/apps using useRouter()
+        1. Update apps/cloud/src/app/dashboard/page.tsx:
+           - "use client"
+           - Get org context using useOrganization() + getOrganization
+           - Use useQuery(api.reports.getReportCounts, { orgId }) for counts
+           - Use useQuery(api.apps.listApps, { orgId }) for app count
+           - Summary cards grid:
+             * Total Reports (total count)
+             * Critical (critical count, red accent)
+             * High (high count, orange accent)
+             * Apps (number of apps)
+           - Quick links section: "View all reports", "Manage apps"
+           - Welcome message when no data yet
+           - Loading state
 
         2. Run full verification suite:
            - yarn typecheck
@@ -172,7 +172,7 @@
            - Smoke test: dev server starts
       </action>
       <verify>yarn build &amp;&amp; yarn typecheck</verify>
-      <done>Delete app with confirmation dialog. Cascading deletion. Redirect after delete. Full build passes.</done>
+      <done>Dashboard shows report summary cards. Full build passes with all reports pages.</done>
     </task>
   </tasks>
 
