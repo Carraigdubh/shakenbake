@@ -1,0 +1,16 @@
+{
+  "planId": "03-01",
+  "planName": "Auth Pages + Dashboard Layout",
+  "agentType": "whycode:frontend-web-agent",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "iterating",
+  "currentRunId": "03-01-1-2026-02-26T11:30:00Z",
+  "tasks": [
+    { "id": "task-001", "name": "Clerk auth pages", "status": "pending", "lastVerified": null },
+    { "id": "task-002", "name": "Dashboard layout with sidebar and header", "status": "pending", "lastVerified": null },
+    { "id": "task-003", "name": "Marketing landing page", "status": "pending", "lastVerified": null }
+  ],
+  "iterations": [{ "iteration": 1, "startedAt": "2026-02-26T11:30:00Z", "outcome": null }],
+  "lastVerificationFailure": null
+}
