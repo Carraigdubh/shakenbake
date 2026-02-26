@@ -8,46 +8,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-type Platform = "ios" | "android" | "web" | "universal";
+import { type Platform, platformConfig } from "@/lib/constants";
+import { formatDate } from "@/lib/format";
 
 interface AppCardProps {
   appId: string;
   name: string;
   platform: Platform;
   createdAt: number;
-}
-
-const platformConfig: Record<
-  Platform,
-  { label: string; className: string }
-> = {
-  ios: {
-    label: "iOS",
-    className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  },
-  android: {
-    label: "Android",
-    className:
-      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  },
-  web: {
-    label: "Web",
-    className:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  },
-  universal: {
-    label: "Universal",
-    className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-  },
-};
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 export function AppCard({ appId, name, platform, createdAt }: AppCardProps) {

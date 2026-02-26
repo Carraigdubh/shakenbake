@@ -1,11 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireAuth, requireOrgAccess } from "./lib/auth";
 
 /**
  * Create a new app within an organization.
  *
- * Requires authentication. Creates an app record with the given name, platform,
- * and organization association.
+ * Requires authentication and org membership. Creates an app record with the
+ * given name, platform, and organization association.
  *
  * @returns The new app's Convex document ID.
  */
@@ -21,10 +22,7 @@ export const createApp = mutation({
     orgId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireOrgAccess(ctx, args.orgId);
 
     const appId = await ctx.db.insert("apps", {
       orgId: args.orgId,
@@ -40,13 +38,16 @@ export const createApp = mutation({
 /**
  * List all apps belonging to an organization.
  *
- * Uses the by_orgId index for efficient filtered lookup.
+ * Requires authentication and org membership. Uses the by_orgId index for
+ * efficient filtered lookup.
  *
  * @returns Array of app documents.
  */
 export const listApps = query({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, args) => {
+    await requireOrgAccess(ctx, args.orgId);
+
     return await ctx.db
       .query("apps")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
@@ -57,19 +58,35 @@ export const listApps = query({
 /**
  * Get a single app by its Convex document ID.
  *
+ * Requires authentication. Verifies the caller's org matches the app's org.
+ *
  * @returns The app document or null if the ID is invalid.
  */
 export const getApp = query({
   args: { appId: v.id("apps") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.appId);
+    const auth = await requireAuth(ctx);
+
+    const app = await ctx.db.get(args.appId);
+    if (!app) {
+      return null;
+    }
+
+    // Verify the caller's org owns this app
+    const org = await ctx.db.get(app.orgId);
+    if (!org || org.clerkOrgId !== auth.clerkOrgId) {
+      throw new Error("Access denied - not a member of this organization");
+    }
+
+    return app;
   },
 });
 
 /**
  * Delete an app and cascade-delete all its API keys.
  *
- * Requires authentication. Deletes all apiKey records associated with the app
+ * Requires authentication and org membership. Verifies the caller's org owns
+ * the app before deleting. Deletes all apiKey records associated with the app
  * via the by_appId index, then deletes the app record itself.
  *
  * @returns `{ success: true }` on completion.
@@ -77,9 +94,17 @@ export const getApp = query({
 export const deleteApp = mutation({
   args: { appId: v.id("apps") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    const auth = await requireAuth(ctx);
+
+    // Get the app and verify org ownership
+    const app = await ctx.db.get(args.appId);
+    if (!app) {
+      throw new Error("App not found");
+    }
+
+    const org = await ctx.db.get(app.orgId);
+    if (!org || org.clerkOrgId !== auth.clerkOrgId) {
+      throw new Error("Access denied - not a member of this organization");
     }
 
     // Cascade-delete all API keys for this app
@@ -90,6 +115,27 @@ export const deleteApp = mutation({
 
     for (const key of keys) {
       await ctx.db.delete(key._id);
+    }
+
+    // Cascade-delete all reports and their storage files for this app
+    const reports = await ctx.db
+      .query("reports")
+      .withIndex("by_appId", (q) => q.eq("appId", args.appId))
+      .collect();
+
+    for (const report of reports) {
+      // Delete associated storage files
+      if (report.screenshotStorageId) {
+        await ctx.storage.delete(report.screenshotStorageId);
+      }
+      if (report.screenshotOriginalStorageId) {
+        await ctx.storage.delete(report.screenshotOriginalStorageId);
+      }
+      if (report.audioStorageId) {
+        await ctx.storage.delete(report.audioStorageId);
+      }
+      // Delete the report record
+      await ctx.db.delete(report._id);
     }
 
     // Delete the app record

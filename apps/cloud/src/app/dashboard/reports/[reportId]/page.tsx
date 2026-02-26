@@ -19,49 +19,8 @@ import {
   ImageOff,
   Loader2,
 } from "lucide-react";
-
-type Severity = "low" | "medium" | "high" | "critical";
-type Category = "bug" | "ui" | "crash" | "performance" | "other";
-
-const severityConfig: Record<Severity, { label: string; className: string }> = {
-  low: {
-    label: "Low",
-    className:
-      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  },
-  medium: {
-    label: "Medium",
-    className:
-      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
-  },
-  high: {
-    label: "High",
-    className:
-      "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-  },
-  critical: {
-    label: "Critical",
-    className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
-  },
-};
-
-const categoryConfig: Record<Category, { label: string }> = {
-  bug: { label: "Bug" },
-  ui: { label: "UI" },
-  crash: { label: "Crash" },
-  performance: { label: "Performance" },
-  other: { label: "Other" },
-};
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { severityConfig, categoryConfig } from "@/lib/constants";
+import { formatDateTime } from "@/lib/format";
 
 export default function ReportDetailPage({
   params,
@@ -150,7 +109,7 @@ export default function ReportDetailPage({
         </Badge>
         <Badge variant="outline">{catConfig.label}</Badge>
         <span className="text-sm text-muted-foreground">
-          {formatDate(report.createdAt)}
+          {formatDateTime(report.createdAt)}
         </span>
         {report.forwardedIssueUrl && (
           <a

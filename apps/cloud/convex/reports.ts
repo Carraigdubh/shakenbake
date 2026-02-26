@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internalMutation, query } from "./_generated/server";
+import { requireAuth, requireOrgAccess } from "./lib/auth";
 
 // ---- ingestReport (internal mutation) ----
 
@@ -67,8 +68,12 @@ export const ingestReport = internalMutation({
 /**
  * List reports for an organization with optional filters and pagination.
  *
- * Supports filtering by appId and severity. Results are ordered by creation
- * time descending (newest first). Uses Convex pagination for large result sets.
+ * Requires authentication and org membership. Supports filtering by appId and
+ * severity. Results are ordered by creation time descending (newest first).
+ * Uses Convex pagination for large result sets.
+ *
+ * When filtering by appId, the app is verified to belong to the requested org
+ * before returning results, preventing cross-org data leakage.
  */
 export const listReports = query({
   args: {
@@ -85,12 +90,20 @@ export const listReports = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
+    await requireOrgAccess(ctx, args.orgId);
+
     // Start with the org-level index for the base filter.
     let baseQuery;
 
     if (args.appId) {
-      // If filtering by app, use the by_appId index (still scoped to the org
-      // by filtering post-index).
+      // Verify the app belongs to the requested org before filtering by it.
+      // This prevents cross-org data access via a crafted appId.
+      const app = await ctx.db.get(args.appId);
+      if (!app || app.orgId !== args.orgId) {
+        // Return empty paginated result -- app does not belong to this org
+        return { page: [], isDone: true, continueCursor: "" };
+      }
+
       baseQuery = ctx.db
         .query("reports")
         .withIndex("by_appId", (q) => q.eq("appId", args.appId!))
@@ -119,15 +132,24 @@ export const listReports = query({
 /**
  * Get a single report by its document ID.
  *
- * Resolves file storage URLs for screenshots and audio so the client can
- * display/play them directly.
+ * Requires authentication. Verifies the caller's org owns the report before
+ * returning it. Resolves file storage URLs for screenshots and audio so the
+ * client can display/play them directly.
  */
 export const getReport = query({
   args: { reportId: v.id("reports") },
   handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx);
+
     const report = await ctx.db.get(args.reportId);
     if (!report) {
       return null;
+    }
+
+    // Verify the caller's org owns this report
+    const org = await ctx.db.get(report.orgId);
+    if (!org || org.clerkOrgId !== auth.clerkOrgId) {
+      throw new Error("Access denied - not a member of this organization");
     }
 
     // Resolve storage URLs
@@ -157,12 +179,15 @@ export const getReport = query({
 /**
  * Get report counts broken down by severity for an organization.
  *
- * Scans all reports for the org using the by_orgId index and counts
- * each severity level. Returns total and per-severity counts.
+ * Requires authentication and org membership. Scans all reports for the org
+ * using the by_orgId index and counts each severity level. Returns total and
+ * per-severity counts.
  */
 export const getReportCounts = query({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, args) => {
+    await requireOrgAccess(ctx, args.orgId);
+
     const reports = await ctx.db
       .query("reports")
       .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))

@@ -1,38 +1,28 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireAuth } from "./lib/auth";
 
 /**
  * Ensure an organization exists for the current user's Clerk org context.
  *
- * Reads the org ID from the authenticated user's identity claims.
- * If the org already exists in the database, returns its ID.
- * Otherwise, creates a new org record and returns the new ID.
+ * Requires authentication. Reads the org ID from the authenticated user's
+ * identity claims and verifies it matches the caller's JWT. If the org already
+ * exists in the database, returns its ID. Otherwise, creates a new org record
+ * and returns the new ID.
  *
  * Throws if no auth context or no org ID in claims.
  */
 export const ensureOrganization = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    // Clerk includes org_id in the JWT custom claims when an org is selected.
-    // The tokenIdentifier format from Clerk is typically "<issuer>|<subject>".
-    // org_id may be available in custom claims or as part of the identity object.
-    const clerkOrgId =
-      (identity as Record<string, unknown>).org_id as string | undefined;
-    if (!clerkOrgId) {
-      throw new Error(
-        "No organization context. Select an organization in Clerk.",
-      );
-    }
+    const auth = await requireAuth(ctx);
 
     // Check if org already exists via index
     const existing = await ctx.db
       .query("organizations")
-      .withIndex("by_clerkOrgId", (q) => q.eq("clerkOrgId", clerkOrgId))
+      .withIndex("by_clerkOrgId", (q) =>
+        q.eq("clerkOrgId", auth.clerkOrgId),
+      )
       .first();
 
     if (existing) {
@@ -41,8 +31,8 @@ export const ensureOrganization = mutation({
 
     // Create new org record
     const orgId = await ctx.db.insert("organizations", {
-      clerkOrgId,
-      name: (identity.name ?? clerkOrgId) as string,
+      clerkOrgId: auth.clerkOrgId,
+      name: (auth.identity.name as string) ?? auth.clerkOrgId,
       createdAt: Date.now(),
     });
 
@@ -53,11 +43,21 @@ export const ensureOrganization = mutation({
 /**
  * Look up an organization by its Clerk org ID.
  *
- * Returns the organization document or null if not found.
+ * Requires authentication. Verifies the caller's JWT org_id matches the
+ * requested clerkOrgId to prevent cross-org lookups.
+ *
+ * @returns The organization document or null if not found.
  */
 export const getOrganization = query({
   args: { clerkOrgId: v.string() },
   handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx);
+
+    // Verify the caller is requesting their own org
+    if (auth.clerkOrgId !== args.clerkOrgId) {
+      throw new Error("Access denied - not a member of this organization");
+    }
+
     return await ctx.db
       .query("organizations")
       .withIndex("by_clerkOrgId", (q) => q.eq("clerkOrgId", args.clerkOrgId))
@@ -68,11 +68,26 @@ export const getOrganization = query({
 /**
  * Get an organization by its Convex document ID.
  *
- * Returns the organization document or null if the ID is invalid.
+ * Requires authentication. Verifies the caller's JWT org_id matches the
+ * organization's clerkOrgId to prevent cross-org access.
+ *
+ * @returns The organization document or null if the ID is invalid.
  */
 export const getOrganizationById = query({
   args: { orgId: v.id("organizations") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.orgId);
+    const auth = await requireAuth(ctx);
+
+    const org = await ctx.db.get(args.orgId);
+    if (!org) {
+      return null;
+    }
+
+    // Verify the caller's org matches
+    if (org.clerkOrgId !== auth.clerkOrgId) {
+      throw new Error("Access denied - not a member of this organization");
+    }
+
+    return org;
   },
 });

@@ -104,6 +104,20 @@ http.route({
       return errorResponse("Invalid JSON body", 400);
     }
 
+    // 3b. Validate payload sizes before processing base64 data
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB base64 string
+    const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50MB base64 string
+
+    if (typeof body.screenshotAnnotated === "string" && body.screenshotAnnotated.length > MAX_IMAGE_SIZE) {
+      return errorResponse("screenshotAnnotated exceeds maximum size (10MB)", 413);
+    }
+    if (typeof body.screenshotOriginal === "string" && body.screenshotOriginal.length > MAX_IMAGE_SIZE) {
+      return errorResponse("screenshotOriginal exceeds maximum size (10MB)", 413);
+    }
+    if (typeof body.audio === "string" && body.audio.length > MAX_AUDIO_SIZE) {
+      return errorResponse("audio exceeds maximum size (50MB)", 413);
+    }
+
     // 4. Validate required fields
     const errors: string[] = [];
 

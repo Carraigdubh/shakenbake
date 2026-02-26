@@ -40,42 +40,16 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { type Platform, platformConfig } from "@/lib/constants";
+import { formatDate } from "@/lib/format";
 
-type Platform = "ios" | "android" | "web" | "universal";
-
-const platformConfig: Record<
-  Platform,
-  { label: string; className: string }
-> = {
-  ios: {
-    label: "iOS",
-    className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  },
-  android: {
-    label: "Android",
-    className:
-      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  },
-  web: {
-    label: "Web",
-    className:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  },
-  universal: {
-    label: "Universal",
-    className: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-  },
-};
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function escapeForCode(str: string): string {
+  return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/`/g, "\\`");
 }
 
 function getSetupSnippet(platform: Platform, appName: string): string {
+  const escaped = escapeForCode(appName);
+
   if (platform === "web") {
     return `// Install the SDK
 npm install @shakenbake/web @shakenbake/linear
@@ -85,7 +59,7 @@ import { ShakeNbake } from '@shakenbake/web';
 
 ShakeNbake.init({
   apiKey: 'YOUR_API_KEY',
-  app: '${appName}',
+  app: '${escaped}',
 });`;
   }
 
@@ -100,7 +74,7 @@ export default function App() {
   return (
     <ShakeNbakeProvider
       apiKey="YOUR_API_KEY"
-      app="${appName}"
+      app="${escaped}"
     >
       {/* Your app content */}
     </ShakeNbakeProvider>

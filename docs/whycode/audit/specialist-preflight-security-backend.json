@@ -1,0 +1,27 @@
+{
+  "agent": "whycode:backend-convex-agent",
+  "taskId": "security-fixes-HIGH1-MEDIUM3-MEDIUM5-MEDIUM6-LOW4",
+  "convexMode": "cloud-live",
+  "modeSource": "user-decision",
+  "modeEvidence": "docs/whycode/decisions/convex-mode.json confirms cloud-live",
+  "blockedCommands": [
+    "npx convex dev",
+    "npx convex dev --local",
+    "npx convex deploy",
+    "npx convex push"
+  ],
+  "allowedValidation": [
+    "npx tsc --noEmit",
+    "yarn typecheck",
+    "yarn test",
+    "yarn build"
+  ],
+  "issues": [
+    "HIGH-1: No request body size limit on base64 file uploads in http.ts",
+    "MEDIUM-3: Setup snippet interpolates app name without escaping",
+    "MEDIUM-5: deleteApp does not cascade-delete reports or storage",
+    "MEDIUM-6: Duplicated config objects across frontend components",
+    "LOW-4: Non-null assertion on Clerk publishable key"
+  ],
+  "createdAt": "2026-02-26T00:00:00Z"
+}

@@ -1,12 +1,14 @@
 import { v } from "convex/values";
 import { mutation, query, internalQuery } from "./_generated/server";
+import { requireAuth, requireOrgAccess } from "./lib/auth";
 
 /**
  * Generate a new API key for an app.
  *
- * Requires authentication. Creates a key with the `snb_app_` prefix followed
- * by 32 random hex characters. The full key is returned once to the caller and
- * should be displayed for the user to copy.
+ * Requires authentication and org membership. Creates a key with the
+ * `snb_app_` prefix followed by 32 cryptographically random hex characters.
+ * The full key is returned once to the caller and should be displayed for the
+ * user to copy.
  *
  * @returns The full API key string (shown to user once).
  */
@@ -16,17 +18,14 @@ export const generateApiKey = mutation({
     orgId: v.id("organizations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    await requireOrgAccess(ctx, args.orgId);
 
-    // Generate 32 random hex characters for the key suffix
-    const hexChars = "0123456789abcdef";
-    let suffix = "";
-    for (let i = 0; i < 32; i++) {
-      suffix += hexChars[Math.floor(Math.random() * 16)];
-    }
+    // Use crypto.getRandomValues for cryptographically secure key generation
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
+    const suffix = Array.from(array, (b) =>
+      b.toString(16).padStart(2, "0"),
+    ).join("");
     const key = `snb_app_${suffix}`;
 
     await ctx.db.insert("apiKeys", {
@@ -44,14 +43,27 @@ export const generateApiKey = mutation({
 /**
  * List all API keys for an app, with key values masked.
  *
- * Returns each key document with the `key` field masked to show only
- * the last 4 characters: `snb_app_****...XXXX`.
+ * Requires authentication. Verifies the caller's org owns the app before
+ * returning keys. Returns each key document with the `key` field masked to
+ * show only the last 4 characters: `snb_app_****...XXXX`.
  *
  * @returns Array of API key documents with masked key values.
  */
 export const listApiKeys = query({
   args: { appId: v.id("apps") },
   handler: async (ctx, args) => {
+    const auth = await requireAuth(ctx);
+
+    // Verify the app belongs to the caller's org
+    const app = await ctx.db.get(args.appId);
+    if (!app) {
+      throw new Error("App not found");
+    }
+    const org = await ctx.db.get(app.orgId);
+    if (!org || org.clerkOrgId !== auth.clerkOrgId) {
+      throw new Error("Access denied - not a member of this organization");
+    }
+
     const keys = await ctx.db
       .query("apiKeys")
       .withIndex("by_appId", (q) => q.eq("appId", args.appId))
@@ -67,15 +79,29 @@ export const listApiKeys = query({
 /**
  * Revoke an API key by setting isActive to false.
  *
- * Requires authentication. The key remains in the database but will no longer
- * pass validation checks.
+ * Requires authentication and org membership. Verifies the caller's org owns
+ * the key's associated app before revoking. The key remains in the database but
+ * will no longer pass validation checks.
  */
 export const revokeApiKey = mutation({
   args: { keyId: v.id("apiKeys") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    const auth = await requireAuth(ctx);
+
+    // Get the key and verify org ownership via the associated app
+    const keyDoc = await ctx.db.get(args.keyId);
+    if (!keyDoc) {
+      throw new Error("API key not found");
+    }
+
+    const app = await ctx.db.get(keyDoc.appId);
+    if (!app) {
+      throw new Error("Associated app not found");
+    }
+
+    const org = await ctx.db.get(app.orgId);
+    if (!org || org.clerkOrgId !== auth.clerkOrgId) {
+      throw new Error("Access denied - not a member of this organization");
     }
 
     await ctx.db.patch(args.keyId, { isActive: false });
