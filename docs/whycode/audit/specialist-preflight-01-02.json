@@ -1,0 +1,29 @@
+{
+  "agent": "whycode:backend-convex-agent",
+  "planId": "01-02",
+  "status": "pass",
+  "resolvedContext": {
+    "mode": "cloud-live",
+    "convexDeploymentUrl": "will be set via env var at runtime",
+    "clerkIntegration": true
+  },
+  "source": "user-selection",
+  "modeEvidence": [
+    "docs/whycode/decisions/convex-mode.json: mode=cloud-live, source=user-selection",
+    "docs/whycode/capability-plan.json: convexContext.mode=cloud-live"
+  ],
+  "commandsBlockedForSafety": [
+    "npx convex dev",
+    "npx convex dev --once",
+    "npx convex deploy",
+    "npx convex push"
+  ],
+  "requiresUserInput": [
+    "NEXT_PUBLIC_CONVEX_URL",
+    "CONVEX_DEPLOYMENT",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "CLERK_SECRET_KEY",
+    "CLERK_JWT_ISSUER_DOMAIN"
+  ],
+  "timestamp": "2026-02-26T11:10:30Z"
+}

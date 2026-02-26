@@ -150,3 +150,36 @@
 - **Result**: PASS
 - **Tests**: 391/391 passing (70 core + 92 linear + 142 web + 87 react-native)
 - **Iterations**: 1
+
+---
+
+## 2026-02-26T11:10:00Z - Plan 01-02: Convex Backend Setup + Schema
+
+**Agent**: whycode:backend-convex-agent | **Iteration**: 1 | **Outcome**: PLAN_COMPLETE
+
+### Tasks Completed
+- **task-001**: Installed convex (1.32.0) and @clerk/nextjs (6.38.2). Created Providers component with ClerkProvider + ConvexProviderWithClerk wrapping. Includes env var guard for NEXT_PUBLIC_CONVEX_URL.
+- **task-002**: Defined Convex schema with 4 tables (organizations, apps, apiKeys, reports) and proper indexes. Created auth.config.ts for Clerk JWT provider. Added convex/tsconfig.json.
+- **task-003**: Created Clerk middleware protecting non-public routes (/, /sign-in, /sign-up, /api/ingest are public). Full monorepo verification suite passes.
+
+### Verification
+- typecheck: PASS (exit 0) - all 8 packages
+- lint: PASS (exit 0) - all 8 packages
+- test: PASS (142 total)
+- build: PASS (exit 0) - all 8 packages
+- smoke: PASS (Next.js dev server starts, Clerk middleware bundled at 86.8 kB)
+
+### Safety
+- Convex mode: cloud-live (user-confirmed)
+- Blocked commands: npx convex dev, npx convex deploy
+- Runtime requires: NEXT_PUBLIC_CONVEX_URL, CONVEX_DEPLOYMENT, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, CLERK_JWT_ISSUER_DOMAIN
+
+---
+
+## 2026-02-26T11:15Z - Plan 01-02 Completed
+
+- **Phase**: 5 (Implementation)
+- **Plan**: 01-02 (Convex Backend Setup + Schema)
+- **Result**: PASS
+- **Tests**: 142/142 passing
+- **Iterations**: 1
