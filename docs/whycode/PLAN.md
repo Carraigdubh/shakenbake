@@ -1,7 +1,7 @@
-<plan id="03-01" linear-id="SHA-9">
-  <name>Auth Pages + Dashboard Layout</name>
-  <type>frontend</type>
-  <phase>3</phase>
+<plan id="02-02" linear-id="SHA-8">
+  <name>Report Ingestion Endpoint</name>
+  <type>backend</type>
+  <phase>2</phase>
 
   <completion-contract>
     <rule>You CANNOT output PLAN_COMPLETE until ALL verifications pass</rule>
@@ -19,8 +19,8 @@
     <language>typescript</language>
     <auth>clerk</auth>
     <database>convex</database>
+    <convex-mode>cloud-live</convex-mode>
     <hosting>vercel</hosting>
-    <ui>shadcn/ui + tailwindcss v4</ui>
   </immutable-decisions>
 
   <pm-commands>
@@ -32,11 +32,6 @@
     <lint>yarn lint</lint>
     <dev>yarn dev</dev>
   </pm-commands>
-
-  <available-tools>
-    <linear enabled="true">Update issues after each task</linear>
-    <context7 enabled="false">Not available</context7>
-  </available-tools>
 
   <final-verification>
     <check name="typecheck" command="yarn typecheck" required="true"/>
@@ -50,142 +45,132 @@
   </final-verification>
 
   <context>
-    Plans 01-01, 01-02, and 02-01 are COMPLETE. apps/cloud/ now has:
-    - Working Next.js 15 with React 19, Tailwind v4, shadcn/ui (Button, Card, Input)
-    - Convex with schema (organizations, apps, apiKeys, reports)
-    - Convex functions: organizations.ts, apps.ts, apiKeys.ts
-    - Clerk middleware protecting /dashboard/* routes
-    - ConvexProviderWithClerk wrapping the app
-    - All builds, typechecks, tests pass
+    Plans 01-01, 01-02, 02-01, and 03-01 are COMPLETE. apps/cloud/ now has:
+    - Working Next.js 15 with Tailwind v4, shadcn/ui
+    - Convex schema: organizations, apps, apiKeys, reports tables
+    - Convex functions: organizations.ts (ensureOrg, getOrg), apps.ts (CRUD), apiKeys.ts (generate, list, revoke, validateApiKey internal)
+    - Clerk auth pages, dashboard layout with sidebar/header
+    - Marketing landing page
+    - All builds/typechecks/tests pass
 
-    Existing components in apps/cloud/src/components/ui/:
-    - button.tsx, card.tsx, input.tsx (shadcn/ui)
+    This plan creates the HTTP ingestion endpoint that SDK clients POST bug reports to.
 
-    Existing files:
-    - src/app/layout.tsx (root layout with Providers)
-    - src/app/page.tsx (placeholder with Card/Button)
-    - src/components/providers.tsx (ConvexProviderWithClerk)
-    - src/middleware.ts (Clerk middleware)
-    - src/lib/utils.ts (cn helper)
+    KEY ARCHITECTURE:
+    - Convex HTTP actions are used for public API endpoints (not authenticated via Clerk)
+    - SDK clients send reports with API key in Authorization header
+    - The HTTP action validates the key using the internal validateApiKey query
+    - Screenshots/audio are base64-encoded in the report JSON body
+    - Files are stored in Convex file storage via ctx.storage.store()
+    - A report record is created linking to the stored files
 
-    This plan creates:
-    1. Clerk auth pages (sign-in, sign-up) using Clerk's hosted UI components
-    2. Dashboard layout with sidebar navigation and header with org switcher
-    3. Marketing landing page
+    EXISTING FILES TO READ:
+    - apps/cloud/convex/apiKeys.ts - has validateApiKey internalQuery
+    - apps/cloud/convex/schema.ts - has reports table schema
+    - apps/cloud/convex/_generated/server.ts - has httpAction, internalQuery etc.
+    - packages/core/src/types.ts - has BugReport type definition
 
-    IMPORTANT NOTES:
-    - Use @clerk/nextjs components: SignIn, SignUp, OrganizationSwitcher, UserButton
-    - Clerk auth pages use catch-all routes: sign-in/[[...sign-in]]/page.tsx
-    - Dashboard layout should be a nested layout under /dashboard/
-    - The sidebar should have nav links to: Apps (/dashboard/apps), Reports (/dashboard/reports)
-    - Header should have OrganizationSwitcher and UserButton from Clerk
-    - Landing page is a server component (no client JS needed)
-    - Use existing shadcn components (Button, Card) plus add any needed ones
-    - Install additional shadcn components if needed: npx shadcn@latest add [component]
-    - The landing page should have a professional look - hero, features, pricing preview
-    - For env vars not being set (Clerk keys), the build should still succeed
-    - Tailwind v4 uses @import "tailwindcss" - NOT the v3 @tailwind directives
-    - The globals.css already has shadcn CSS custom properties defined
+    CONVEX HTTP ACTION PATTERN:
+    - import { httpRouter } from "convex/server"
+    - import { httpAction } from "./_generated/server"
+    - const http = httpRouter()
+    - http.route({ path: "/api/ingest", method: "POST", handler: httpAction(async (ctx, request) => { ... }) })
+    - export default http
+
+    DO NOT run npx convex dev/deploy (cloud-live safety).
   </context>
 
   <tasks>
-    <task id="task-001" type="auto" linear-id="SHA-9">
-      <name>Clerk auth pages</name>
-      <files>
-        apps/cloud/src/app/sign-in/[[...sign-in]]/page.tsx,
-        apps/cloud/src/app/sign-up/[[...sign-up]]/page.tsx
-      </files>
+    <task id="task-001" type="auto" linear-id="SHA-8">
+      <name>Convex HTTP router for ingestion</name>
+      <files>apps/cloud/convex/http.ts</files>
       <action>
-        1. Create apps/cloud/src/app/sign-in/[[...sign-in]]/page.tsx:
-           - Import { SignIn } from "@clerk/nextjs"
-           - Center the SignIn component on the page
-           - Use a clean layout: flex center, min-h-screen
-           - Add afterSignInUrl="/dashboard" or routing config
+        Create apps/cloud/convex/http.ts:
 
-        2. Create apps/cloud/src/app/sign-up/[[...sign-up]]/page.tsx:
-           - Import { SignUp } from "@clerk/nextjs"
-           - Same centered layout
-           - Add afterSignUpUrl="/dashboard" or routing config
-
-        Both pages should be simple and clean.
+        1. Import httpRouter from "convex/server"
+        2. Import httpAction from "./_generated/server"
+        3. Import internal API reference from "./_generated/api"
+        4. Create HTTP router
+        5. Register POST /api/ingest route with handler:
+           a. Extract Authorization header: "Bearer snb_app_xxx"
+           b. If no/invalid header format: return Response with 401
+           c. Call ctx.runQuery(internal.apiKeys.validateApiKey, { key }) to validate
+           d. If invalid/inactive key: return 401
+           e. Parse JSON body
+           f. Validate required fields (title, description, severity, category)
+           g. If malformed: return 400 with error details
+           h. Return 200 with { success: true, message: "Report received" } for now
+              (actual storage will be in task-002)
+        6. Add CORS headers for cross-origin requests:
+           - Access-Control-Allow-Origin: *
+           - Access-Control-Allow-Methods: POST, OPTIONS
+           - Access-Control-Allow-Headers: Authorization, Content-Type
+        7. Add OPTIONS handler for CORS preflight
+        8. Export default http
       </action>
       <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
-      <done>Sign-in and sign-up pages render Clerk UI components. TypeScript compiles.</done>
+      <done>HTTP router compiles. POST /api/ingest validates auth header and body. CORS headers set. 401 for bad auth, 400 for bad body.</done>
     </task>
 
-    <task id="task-002" type="auto" linear-id="SHA-9">
-      <name>Dashboard layout with sidebar and header</name>
-      <files>
-        apps/cloud/src/app/dashboard/layout.tsx,
-        apps/cloud/src/app/dashboard/page.tsx,
-        apps/cloud/src/components/sidebar.tsx,
-        apps/cloud/src/components/header.tsx
-      </files>
+    <task id="task-002" type="auto" linear-id="SHA-8">
+      <name>Report storage with file uploads</name>
+      <files>apps/cloud/convex/reports.ts</files>
       <action>
-        1. Create apps/cloud/src/components/sidebar.tsx:
-           - "use client" (needs usePathname for active link)
-           - Navigation links: Dashboard (/dashboard), Apps (/dashboard/apps), Reports (/dashboard/reports)
-           - Use icons from lucide-react: LayoutDashboard, AppWindow, Bug
-           - Active link highlighting based on current path
-           - Clean design with border-right separator
-           - Fixed width (e.g., w-64) on desktop, hidden on mobile
+        Create apps/cloud/convex/reports.ts:
 
-        2. Create apps/cloud/src/components/header.tsx:
-           - "use client" (needs Clerk components)
-           - Import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
-           - Layout: flex between with org switcher on left, user button on right
-           - Mobile menu button (hamburger) to toggle sidebar on small screens
-           - Clean border-bottom separator
+        1. ingestReport mutation (internal - called from HTTP action):
+           - Args: appId, orgId, title, description, severity, category, externalId,
+                   context (v.any()), customMetadata (v.optional),
+                   screenshotAnnotated (v.optional v.string - base64),
+                   screenshotOriginal (v.optional v.string - base64),
+                   audio (v.optional v.string - base64)
+           - For each base64 file provided:
+             * Decode base64 to Uint8Array
+             * Create Blob
+             * Store via ctx.storage.store(blob)
+             * Get storage ID
+           - Insert report record with all fields + storage IDs
+           - Return { reportId: id, success: true }
 
-        3. Create apps/cloud/src/app/dashboard/layout.tsx:
-           - Import Sidebar and Header components
-           - Layout structure: sidebar on left, main content area on right
-           - Header at top of content area
-           - Responsive: sidebar hidden on mobile, shown on desktop
-           - Use Tailwind for responsive layout (lg:flex, etc.)
-           - This is a client component if it manages sidebar toggle state,
-             OR use a server layout with client sidebar/header components
+        2. Update http.ts to call ingestReport after validation:
+           - Extract all fields from JSON body
+           - Call ctx.runMutation(internal.reports.ingestReport, { ... })
+           - Return the result with 200
 
-        4. Create apps/cloud/src/app/dashboard/page.tsx:
-           - Simple placeholder: "Welcome to ShakeNbake Cloud"
-           - Show a Card with brief instructions
-           - This will be replaced with the full overview in plan 03-03
+        Note: Use internalMutation for ingestReport since it's called from HTTP action,
+        not directly from client.
       </action>
       <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
-      <done>Dashboard layout renders with sidebar and header. Navigation works. Org switcher and user button positioned correctly. Responsive layout.</done>
+      <done>ingestReport stores reports with file uploads. HTTP action calls it after validation. TypeScript compiles.</done>
     </task>
 
-    <task id="task-003" type="auto" linear-id="SHA-9">
-      <name>Marketing landing page</name>
-      <files>
-        apps/cloud/src/app/page.tsx
-      </files>
+    <task id="task-003" type="auto" linear-id="SHA-8">
+      <name>Report query functions</name>
+      <files>apps/cloud/convex/reports.ts</files>
       <action>
-        1. Replace apps/cloud/src/app/page.tsx with a marketing landing page:
-           - This is a SERVER component (no "use client")
-           - Hero section:
-             * Headline: "Bug Reporting That Just Works"
-             * Subheadline: "Shake your device, capture a screenshot, annotate it, and submit. ShakeNbake handles the rest."
-             * CTA buttons: "Get Started" (link to /sign-up), "Learn More" (anchor to features)
-           - Features section (4 cards using shadcn Card):
-             * Screenshot Capture: "One shake captures everything"
-             * Annotation Tools: "Draw, highlight, and mark up screenshots"
-             * Device Context: "Automatically collects device info, network, battery, and more"
-             * Linear Integration: "Bug reports become Linear issues instantly"
-           - How It Works section (3 steps):
-             * 1. Install SDK  2. Configure API key  3. Shake to report
-           - Pricing preview:
-             * "$10/month per workspace" with feature list
-           - Footer with links
+        Add to apps/cloud/convex/reports.ts:
 
-        2. Use Tailwind for all styling, shadcn Button and Card components
-        3. Use lucide-react icons for feature cards
-        4. Import Link from "next/link" for navigation
+        1. listReports query:
+           - Args: { orgId, appId (optional), severity (optional), paginationOpts }
+           - Use Convex pagination: ctx.db.query("reports").withIndex(...).paginate(paginationOpts)
+           - Filter by orgId (required), optionally by appId, severity
+           - Order by createdAt descending
+           - Return paginated results
 
-        5. Run full verification: yarn build && yarn typecheck && yarn lint
+        2. getReport query:
+           - Args: { reportId: v.id("reports") }
+           - Get report by ID
+           - For each storage ID, generate URL via ctx.storage.getUrl(storageId)
+           - Return report with resolved file URLs
+
+        3. getReportCounts query:
+           - Args: { orgId: v.id("organizations") }
+           - Count reports by severity for the org
+           - Return { total, low, medium, high, critical }
+
+        Run full verification: yarn build && yarn typecheck && yarn lint
       </action>
       <verify>yarn build &amp;&amp; yarn typecheck</verify>
-      <done>Landing page renders with hero, features, pricing. All server components. Build and typecheck pass. Dev server starts without crashing.</done>
+      <done>Reports queryable with pagination, filters. getReport resolves storage URLs. getReportCounts returns severity breakdown. Full build passes.</done>
     </task>
   </tasks>
 
