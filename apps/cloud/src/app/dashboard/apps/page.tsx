@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useOrganization } from "@clerk/nextjs";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -31,15 +31,17 @@ type Platform = "ios" | "android" | "web" | "universal";
 
 export default function AppsPage() {
   const { organization } = useOrganization();
+  const { isAuthenticated } = useConvexAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [appName, setAppName] = useState("");
   const [platform, setPlatform] = useState<Platform>("web");
   const [isCreating, setIsCreating] = useState(false);
 
   // Get the Convex organization record from the Clerk org ID
+  // Wait for Convex auth to be ready before querying
   const convexOrg = useQuery(
     api.organizations.getOrganization,
-    organization?.id ? { clerkOrgId: organization.id } : "skip"
+    isAuthenticated && organization?.id ? { clerkOrgId: organization.id } : "skip"
   );
 
   const orgId = convexOrg?._id as Id<"organizations"> | undefined;

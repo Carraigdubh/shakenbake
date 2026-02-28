@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,12 @@ export default function ReportDetailPage({
   params: Promise<{ reportId: string }>;
 }) {
   const { reportId } = use(params);
+  const { isAuthenticated } = useConvexAuth();
 
-  const report = useQuery(api.reports.getReport, {
-    reportId: reportId as Id<"reports">,
-  });
+  const report = useQuery(
+    api.reports.getReport,
+    isAuthenticated ? { reportId: reportId as Id<"reports"> } : "skip"
+  );
 
   // Loading state
   if (report === undefined) {

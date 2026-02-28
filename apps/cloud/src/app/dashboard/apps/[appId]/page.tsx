@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useOrganization } from "@clerk/nextjs";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -93,6 +93,7 @@ export default function AppDetailPage({
   const { appId } = use(params);
   const router = useRouter();
   const { organization } = useOrganization();
+  const { isAuthenticated } = useConvexAuth();
 
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -100,9 +101,10 @@ export default function AppDetailPage({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Get the Convex organization record
+  // Wait for Convex auth to be ready before querying
   const convexOrg = useQuery(
     api.organizations.getOrganization,
-    organization?.id ? { clerkOrgId: organization.id } : "skip"
+    isAuthenticated && organization?.id ? { clerkOrgId: organization.id } : "skip"
   );
 
   const orgId = convexOrg?._id as Id<"organizations"> | undefined;
@@ -110,11 +112,11 @@ export default function AppDetailPage({
   // Fetch app details and API keys
   const app = useQuery(
     api.apps.getApp,
-    appId ? { appId: appId as Id<"apps"> } : "skip"
+    isAuthenticated && appId ? { appId: appId as Id<"apps"> } : "skip"
   );
   const apiKeys = useQuery(
     api.apiKeys.listApiKeys,
-    appId ? { appId: appId as Id<"apps"> } : "skip"
+    isAuthenticated && appId ? { appId: appId as Id<"apps"> } : "skip"
   );
 
   const generateApiKey = useMutation(api.apiKeys.generateApiKey);

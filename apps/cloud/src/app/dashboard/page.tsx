@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
 import { useOrganization } from "@clerk/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -23,11 +23,13 @@ import {
 
 export default function DashboardPage() {
   const { organization } = useOrganization();
+  const { isAuthenticated } = useConvexAuth();
 
   // Get the Convex organization record from the Clerk org ID
+  // Wait for Convex auth to be ready before querying
   const convexOrg = useQuery(
     api.organizations.getOrganization,
-    organization?.id ? { clerkOrgId: organization.id } : "skip"
+    isAuthenticated && organization?.id ? { clerkOrgId: organization.id } : "skip"
   );
 
   const orgId = convexOrg?._id as Id<"organizations"> | undefined;
