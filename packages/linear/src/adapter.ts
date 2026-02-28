@@ -123,49 +123,69 @@ export class LinearAdapter implements DestinationAdapter {
     }
 
     // Step 2: PUT the image data to the signed URL
-    try {
-      const body = toUploadBody(imageData, contentType);
+    // Some RN/Android runtimes are picky about body encodings. Try safe variants.
+    const putHeaders: Record<string, string> = {};
+    for (const header of uploadHeaders) {
+      if (isForbiddenSignedHeader(header.key)) continue;
+      putHeaders[header.key] = header.value;
+    }
+    const hasContentTypeHeader = Object.keys(putHeaders).some(
+      (k) => k.toLowerCase() === 'content-type',
+    );
+    if (!hasContentTypeHeader) {
+      putHeaders['Content-Type'] = contentType;
+    }
 
-      // Use Linear-provided signed headers as source of truth.
-      const putHeaders: Record<string, string> = {};
-      for (const header of uploadHeaders) {
-        if (isForbiddenSignedHeader(header.key)) continue;
-        putHeaders[header.key] = header.value;
-      }
-      const hasContentTypeHeader = Object.keys(putHeaders).some(
-        (k) => k.toLowerCase() === 'content-type',
-      );
-      if (!hasContentTypeHeader) {
-        putHeaders['Content-Type'] = contentType;
-      }
+    const bodyCandidates = buildUploadBodyCandidates(imageData, contentType);
+    let lastNetworkError: unknown;
 
-      const putResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: putHeaders,
-        body: body as unknown as BodyInit,
-      });
+    for (const [index, candidate] of bodyCandidates.entries()) {
+      try {
+        const putResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: putHeaders,
+          body: candidate.body as unknown as BodyInit,
+        });
 
-      if (!putResponse.ok) {
-        let responseText = '';
-        try {
-          responseText = await putResponse.text();
-        } catch {
-          // ignore response body parse failures
+        if (!putResponse.ok) {
+          let responseText = '';
+          try {
+            responseText = await putResponse.text();
+          } catch {
+            // ignore response body parse failures
+          }
+          throw new ShakeNbakeError(
+            `File upload to Linear storage failed (HTTP ${String(putResponse.status)}): ${responseText || 'no response body'}`,
+            'UPLOAD_FAILED',
+            { retryable: false },
+          );
         }
-        throw new ShakeNbakeError(
-          `File upload to Linear storage failed (HTTP ${String(putResponse.status)}): ${responseText || 'no response body'}`,
-          'UPLOAD_FAILED',
-          { retryable: false },
-        );
+
+        // Upload succeeded with this encoding.
+        lastNetworkError = undefined;
+        break;
+      } catch (error: unknown) {
+        if (error instanceof ShakeNbakeError) {
+          throw error;
+        }
+
+        lastNetworkError = error;
+        const isLastAttempt = index === bodyCandidates.length - 1;
+        if (!isLastAttempt) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[ShakeNbake][LinearAdapter] Upload retrying with fallback body (${candidate.label}) due to network error: ${safeErrorMessage(error)}`,
+          );
+          continue;
+        }
       }
-    } catch (error: unknown) {
-      if (error instanceof ShakeNbakeError) {
-        throw error;
-      }
+    }
+
+    if (lastNetworkError) {
       throw new ShakeNbakeError(
-        `Network error during file upload to Linear storage (${safeErrorMessage(error)})`,
+        `Network error during file upload to Linear storage (${safeErrorMessage(lastNetworkError)})`,
         'UPLOAD_FAILED',
-        { originalError: error },
+        { originalError: lastNetworkError },
       );
     }
 
@@ -430,22 +450,45 @@ function base64ToBuffer(base64: string): Buffer {
   return Buffer.from(raw, 'base64');
 }
 
-function toUploadBody(
+type UploadBodyCandidate = {
+  label: string;
+  body: Blob | Uint8Array | ArrayBuffer;
+};
+
+function buildUploadBodyCandidates(
   imageData: Buffer | Blob,
   contentType: string,
-): Blob | Uint8Array {
-  if (imageData instanceof Blob) return imageData;
-
-  if (isReactNativeRuntime()) {
-    // RN fetch handles raw ArrayBuffer more reliably than Blob from ArrayBufferView.
-    return new Uint8Array(
-      imageData.buffer,
-      imageData.byteOffset,
-      imageData.byteLength,
-    );
+): UploadBodyCandidate[] {
+  if (imageData instanceof Blob) {
+    return [{ label: 'blob', body: imageData }];
   }
 
-  return new Blob([new Uint8Array(imageData)], { type: contentType });
+  const candidates: UploadBodyCandidate[] = [];
+
+  const uint8 = new Uint8Array(imageData);
+
+  if (isReactNativeRuntime()) {
+    // Most stable in RN dev runtimes.
+    candidates.push({ label: 'uint8array', body: uint8 });
+
+    // Some runtimes accept ArrayBuffer but reject Uint8Array as BodyInit.
+    const arrayBuffer = uint8.buffer;
+    candidates.push({ label: 'arraybuffer', body: arrayBuffer });
+
+    // Final fallback for runtimes that only accept Blob.
+    try {
+      candidates.push({
+        label: 'blob',
+        body: new Blob([uint8], { type: contentType }),
+      });
+    } catch {
+      // Ignore Blob construction failures on runtimes lacking ArrayBufferView blob support.
+    }
+
+    return candidates;
+  }
+
+  return [{ label: 'blob', body: new Blob([uint8], { type: contentType }) }];
 }
 
 function isForbiddenSignedHeader(key: string): boolean {
