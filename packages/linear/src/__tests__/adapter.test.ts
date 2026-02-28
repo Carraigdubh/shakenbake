@@ -465,21 +465,15 @@ describe('LinearAdapter', () => {
       }
     });
 
-    it('throws UPLOAD_FAILED when both screenshot uploads fail', async () => {
-      // Both screenshot uploads fail — adapter now hard-fails to avoid losing visual context
+    it('creates issue when both screenshot uploads fail', async () => {
+      // Both screenshot uploads fail — adapter should still create issue with diagnostic text.
       fetchMock.mockRejectedValueOnce(new TypeError('upload failed'));
       fetchMock.mockRejectedValueOnce(new TypeError('upload failed'));
+      fetchMock.mockResolvedValueOnce(graphqlResponse(issueCreateData()));
 
       const adapter = new LinearAdapter(makeConfig());
-
-      try {
-        await adapter.createIssue(makeReport());
-        expect.unreachable('Should have thrown');
-      } catch (e) {
-        expect(e).toBeInstanceOf(ShakeNbakeError);
-        expect((e as ShakeNbakeError).code).toBe('UPLOAD_FAILED');
-        expect((e as ShakeNbakeError).retryable).toBe(true);
-      }
+      const result = await adapter.createIssue(makeReport());
+      expect(result.success).toBe(true);
     });
 
     it('creates issue when at least one screenshot uploads successfully', async () => {

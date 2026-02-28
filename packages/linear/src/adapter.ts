@@ -233,13 +233,11 @@ export class LinearAdapter implements DestinationAdapter {
     }
 
     if (!annotatedUrl && !originalUrl) {
-      throw new ShakeNbakeError(
-        'Failed to upload screenshots to Linear. The issue was not created to avoid losing visual context.',
-        'UPLOAD_FAILED',
-        {
-          retryable: true,
-          originalError: new Error(screenshotUploadErrors.join(' | ')),
-        },
+      // Keep issue reporting alive even when attachment upload is unavailable in this runtime.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[ShakeNbake][LinearAdapter] Both screenshot uploads failed; proceeding without screenshots:',
+        screenshotUploadErrors.join(' | '),
       );
     }
 
@@ -300,6 +298,10 @@ export class LinearAdapter implements DestinationAdapter {
       originalUrl,
       audioUrl,
     );
+
+    if (!annotatedUrl && !originalUrl && screenshotUploadErrors.length > 0) {
+      description += `\n\n## Screenshot Upload Status\n\nScreenshot upload failed in client runtime. Errors:\n- ${screenshotUploadErrors.join('\n- ')}`;
+    }
 
     if (attachmentUrls.length > 0) {
       const attachmentsMd = attachmentUrls
