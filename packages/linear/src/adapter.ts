@@ -124,15 +124,12 @@ export class LinearAdapter implements DestinationAdapter {
 
     // Step 2: PUT the image data to the signed URL
     try {
-      // Convert Buffer to Blob for fetch body compatibility across environments
-      const body: Blob =
-        imageData instanceof Blob
-          ? imageData
-          : new Blob([new Uint8Array(imageData)], { type: contentType });
+      const body = toUploadBody(imageData, contentType);
 
       // Use Linear-provided signed headers as source of truth.
       const putHeaders: Record<string, string> = {};
       for (const header of uploadHeaders) {
+        if (isForbiddenSignedHeader(header.key)) continue;
         putHeaders[header.key] = header.value;
       }
       const hasContentTypeHeader = Object.keys(putHeaders).some(
@@ -145,12 +142,18 @@ export class LinearAdapter implements DestinationAdapter {
       const putResponse = await fetch(uploadUrl, {
         method: 'PUT',
         headers: putHeaders,
-        body,
+        body: body as unknown as BodyInit,
       });
 
       if (!putResponse.ok) {
+        let responseText = '';
+        try {
+          responseText = await putResponse.text();
+        } catch {
+          // ignore response body parse failures
+        }
         throw new ShakeNbakeError(
-          `File upload to Linear storage failed (HTTP ${String(putResponse.status)})`,
+          `File upload to Linear storage failed (HTTP ${String(putResponse.status)}): ${responseText || 'no response body'}`,
           'UPLOAD_FAILED',
           { retryable: false },
         );
@@ -160,7 +163,7 @@ export class LinearAdapter implements DestinationAdapter {
         throw error;
       }
       throw new ShakeNbakeError(
-        'Network error during file upload to Linear storage',
+        `Network error during file upload to Linear storage (${safeErrorMessage(error)})`,
         'UPLOAD_FAILED',
         { originalError: error },
       );
@@ -425,4 +428,46 @@ function base64ToBuffer(base64: string): Buffer {
   const commaIndex = base64.indexOf(',');
   const raw = commaIndex >= 0 ? base64.substring(commaIndex + 1) : base64;
   return Buffer.from(raw, 'base64');
+}
+
+function toUploadBody(
+  imageData: Buffer | Blob,
+  contentType: string,
+): Blob | Uint8Array {
+  if (imageData instanceof Blob) return imageData;
+
+  if (isReactNativeRuntime()) {
+    // RN fetch handles raw ArrayBuffer more reliably than Blob from ArrayBufferView.
+    return new Uint8Array(
+      imageData.buffer,
+      imageData.byteOffset,
+      imageData.byteLength,
+    );
+  }
+
+  return new Blob([new Uint8Array(imageData)], { type: contentType });
+}
+
+function isForbiddenSignedHeader(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return (
+    normalized === 'host' ||
+    normalized === 'content-length' ||
+    normalized === 'connection' ||
+    normalized === 'accept-encoding'
+  );
+}
+
+function safeErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function isReactNativeRuntime(): boolean {
+  return (
+    typeof navigator !== 'undefined' &&
+    navigator !== null &&
+    'product' in navigator &&
+    (navigator as { product?: string }).product === 'ReactNative'
+  );
 }
