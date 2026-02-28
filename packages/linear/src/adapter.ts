@@ -137,29 +137,12 @@ export class LinearAdapter implements DestinationAdapter {
     }
 
     const bodyCandidates = buildUploadBodyCandidates(imageData, contentType);
+    const attempts = buildUploadAttempts(bodyCandidates);
     let lastNetworkError: unknown;
 
-    for (const [index, candidate] of bodyCandidates.entries()) {
+    for (const [index, attempt] of attempts.entries()) {
       try {
-        const putResponse = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: putHeaders,
-          body: candidate.body as unknown as BodyInit,
-        });
-
-        if (!putResponse.ok) {
-          let responseText = '';
-          try {
-            responseText = await putResponse.text();
-          } catch {
-            // ignore response body parse failures
-          }
-          throw new ShakeNbakeError(
-            `File upload to Linear storage failed (HTTP ${String(putResponse.status)}): ${responseText || 'no response body'}`,
-            'UPLOAD_FAILED',
-            { retryable: false },
-          );
-        }
+        await uploadWithTransport(uploadUrl, putHeaders, attempt);
 
         // Upload succeeded with this encoding.
         lastNetworkError = undefined;
@@ -170,11 +153,11 @@ export class LinearAdapter implements DestinationAdapter {
         }
 
         lastNetworkError = error;
-        const isLastAttempt = index === bodyCandidates.length - 1;
+        const isLastAttempt = index === attempts.length - 1;
         if (!isLastAttempt) {
           // eslint-disable-next-line no-console
           console.warn(
-            `[ShakeNbake][LinearAdapter] Upload retrying with fallback body (${candidate.label}) due to network error: ${safeErrorMessage(error)}`,
+            `[ShakeNbake][LinearAdapter] Upload retrying with fallback body (${attempt.label}) due to network error: ${safeErrorMessage(error)}`,
           );
           continue;
         }
@@ -489,6 +472,114 @@ function buildUploadBodyCandidates(
   }
 
   return [{ label: 'blob', body: new Blob([uint8], { type: contentType }) }];
+}
+
+type UploadTransport = 'fetch' | 'xhr';
+
+type UploadAttempt = {
+  label: string;
+  body: Blob | Uint8Array | ArrayBuffer;
+  transport: UploadTransport;
+};
+
+async function uploadWithTransport(
+  uploadUrl: string,
+  headers: Record<string, string>,
+  attempt: UploadAttempt,
+): Promise<void> {
+  if (attempt.transport === 'xhr') {
+    await uploadViaXhr(uploadUrl, headers, attempt.body);
+    return;
+  }
+
+  const putResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers,
+    body: attempt.body as unknown as BodyInit,
+  });
+
+  if (!putResponse.ok) {
+    let responseText = '';
+    try {
+      responseText = await putResponse.text();
+    } catch {
+      // ignore response body parse failures
+    }
+    throw new ShakeNbakeError(
+      `File upload to Linear storage failed (HTTP ${String(putResponse.status)}): ${responseText || 'no response body'}`,
+      'UPLOAD_FAILED',
+      { retryable: false },
+    );
+  }
+}
+
+function buildUploadAttempts(
+  bodies: UploadBodyCandidate[],
+): UploadAttempt[] {
+  const attempts: UploadAttempt[] = bodies.map((c) => ({
+    label: c.label,
+    body: c.body,
+    transport: 'fetch',
+  }));
+
+  if (isReactNativeRuntime() && typeof XMLHttpRequest !== 'undefined') {
+    for (const c of bodies) {
+      attempts.push({
+        label: `${c.label}/xhr`,
+        body: c.body,
+        transport: 'xhr',
+      });
+    }
+  }
+
+  return attempts;
+}
+
+function uploadViaXhr(
+  uploadUrl: string,
+  headers: Record<string, string>,
+  body: Blob | Uint8Array | ArrayBuffer,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', uploadUrl, true);
+    xhr.timeout = 30000;
+
+    for (const [k, v] of Object.entries(headers)) {
+      xhr.setRequestHeader(k, v);
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+        return;
+      }
+      reject(
+        new ShakeNbakeError(
+          `File upload to Linear storage failed (HTTP ${String(xhr.status)}): ${xhr.responseText || 'no response body'}`,
+          'UPLOAD_FAILED',
+          { retryable: false },
+        ),
+      );
+    };
+
+    xhr.onerror = () => reject(new Error('XHR network error during upload'));
+    xhr.ontimeout = () => reject(new Error('XHR upload timeout'));
+
+    const xhrBody = normalizeXhrBody(body);
+    xhr.send(xhrBody);
+  });
+}
+
+function normalizeXhrBody(
+  body: Blob | Uint8Array | ArrayBuffer,
+): Blob | ArrayBuffer {
+  if (body instanceof Blob) return body;
+  if (body instanceof ArrayBuffer) return body;
+
+  const copy = new Uint8Array(body.byteLength);
+  copy.set(body);
+  return copy.buffer;
 }
 
 function isForbiddenSignedHeader(key: string): boolean {
