@@ -1,0 +1,15 @@
+{
+  "teamId": "647cf1e6-4c6a-43b7-acb1-fcbb4aa0c091",
+  "parentIssueId": "647537fc-bcc9-449e-b283-afb25cb59cc5",
+  "parentIssueIdentifier": "SHA-4",
+  "planIssues": {
+    "01-01": { "issueId": "24faf13c-1746-43b4-acd6-cbed2712d9e3", "issueIdentifier": "SHA-5" },
+    "01-02": { "issueId": "211a53f7-a7c8-4ea8-92f4-c71222d82683", "issueIdentifier": "SHA-6" },
+    "02-01": { "issueId": "a1cde37d-c648-476a-b839-1166f8e51e3f", "issueIdentifier": "SHA-7" },
+    "02-02": { "issueId": "bb16a421-5759-4395-b7c6-83b9584705bd", "issueIdentifier": "SHA-8" },
+    "03-01": { "issueId": "338028b9-b19f-4eba-83ff-bca2ea2c5bd5", "issueIdentifier": "SHA-9" },
+    "03-02": { "issueId": "ed20d952-5252-445f-adaa-a93c13b93654", "issueIdentifier": "SHA-10" },
+    "03-03": { "issueId": "73ff21c0-c1e6-4acb-ac49-ce81cd8b7dfe", "issueIdentifier": "SHA-11" },
+    "04-01": { "issueId": "a406eb37-c14a-438f-94cf-2c02bb65a7c9", "issueIdentifier": "SHA-12" }
+  }
+}

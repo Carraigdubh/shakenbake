@@ -1,23 +1,20 @@
 {
   "packageManager": "yarn",
-  "monorepo": "turborepo",
+  "packageManagerVersion": "1.22.22",
+  "framework": "next",
+  "frameworkVersion": "15",
+  "runtime": "node",
+  "runtimeVersion": ">=20.0.0",
   "language": "typescript",
-  "framework": {
-    "web": "next",
-    "mobile": "expo"
-  },
-  "expoSdk": "54",
-  "reactNative": "0.81",
-  "react": "19.1",
-  "orm": "drizzle",
-  "database": "neon",
   "auth": "clerk",
-  "fileStorage": "vercel-blob",
+  "database": "convex",
+  "convexMode": "cloud-live",
+  "hosting": "vercel",
+  "domain": "shakenbake.mobi",
+  "monorepo": "turborepo",
+  "testing": "vitest",
   "billing": "stripe",
-  "audioTranscription": "openai-whisper",
-  "rnAnnotation": "@shopify/react-native-skia",
-  "webScreenshot": "html2canvas-pro",
-  "deployment": "vercel",
-  "versionManagement": "changesets",
-  "testing": "vitest"
+  "transcription": "openai-whisper",
+  "issueTracking": "linear",
+  "fileStorage": "convex-file-storage"
 }

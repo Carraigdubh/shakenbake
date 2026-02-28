@@ -1,7 +1,7 @@
-<plan id="02-02">
-  <name>Linear Adapter - File Upload</name>
-  <type>backend</type>
-  <phase>2</phase>
+<plan id="03-03" linear-id="SHA-11">
+  <name>Reports Pages</name>
+  <type>frontend</type>
+  <phase>3</phase>
 
   <completion-contract>
     <rule>You CANNOT output PLAN_COMPLETE until ALL verifications pass</rule>
@@ -10,13 +10,17 @@
     <rule>The orchestrator verifies externally - lying = sent back to fix</rule>
   </completion-contract>
 
-  <completion-mode>strict</completion-mode>
+  <completion-mode>partial</completion-mode>
 
   <immutable-decisions>
     <package-manager>yarn</package-manager>
+    <framework>next</framework>
     <monorepo>turborepo</monorepo>
     <language>typescript</language>
-    <testing>vitest</testing>
+    <auth>clerk</auth>
+    <database>convex</database>
+    <hosting>vercel</hosting>
+    <ui>shadcn/ui + tailwindcss v4</ui>
   </immutable-decisions>
 
   <pm-commands>
@@ -26,111 +30,149 @@
     <test>yarn test</test>
     <typecheck>yarn typecheck</typecheck>
     <lint>yarn lint</lint>
+    <dev>yarn dev</dev>
   </pm-commands>
-
-  <available-tools>
-    <linear enabled="false">Skip Linear updates</linear>
-    <context7 enabled="false">Not available</context7>
-  </available-tools>
 
   <final-verification>
     <check name="typecheck" command="yarn typecheck" required="true"/>
     <check name="lint" command="yarn lint" required="true"/>
     <check name="test" command="yarn test" required="true"/>
     <check name="build" command="yarn build" required="true"/>
-    <check name="smoke" command="node -e &quot;const l = require('./packages/linear/dist/index.js'); const a = new l.LinearAdapter({ apiKey: 'test', teamId: 'test' }); console.log('uploadImage:', typeof a.uploadImage, 'createIssue:', typeof a.createIssue, 'testConnection:', typeof a.testConnection);&quot;" required="true">
+    <check name="smoke" command="cd apps/cloud &amp;&amp; timeout 15 yarn dev 2>&amp;1 | head -30" required="true">
       <fail-if-contains>Error:</fail-if-contains>
-      <description>All LinearAdapter methods must be functions</description>
+      <fail-if-contains>TypeError</fail-if-contains>
     </check>
   </final-verification>
 
   <context>
-    Plans 01-01, 01-02, and 02-01 are COMPLETE. The Linear adapter already has:
-    - packages/linear/src/types.ts: LinearConfig
-    - packages/linear/src/graphql.ts: linearFetch, ISSUE_CREATE_MUTATION, VIEWER_QUERY, FILE_UPLOAD_MUTATION
-    - packages/linear/src/markdown.ts: buildIssueDescription
-    - packages/linear/src/adapter.ts: LinearAdapter with createIssue and testConnection
-    - 57 tests passing in packages/linear
+    Plans 01-01 through 03-02 are COMPLETE. apps/cloud/ now has:
+    - Next.js 15, Tailwind v4, shadcn/ui (Button, Card, Input, Dialog, Select, Badge, Label, Table, Tooltip)
+    - Convex schema + functions: organizations, apps (CRUD), apiKeys (generate/list/revoke/validate), reports (ingest/list/get/counts)
+    - Clerk auth pages, dashboard layout with sidebar/header
+    - Landing page, report ingestion HTTP endpoint
+    - Apps management pages: list with create dialog, detail with API keys, delete with confirmation
+    - All builds/typechecks/tests pass
 
-    This plan completes uploadImage (file upload via signed URL) and adds rate limiting + comprehensive error handling.
+    Existing Convex functions for reports (in apps/cloud/convex/reports.ts):
+    - listReports({ orgId, appId?, severity?, paginationOpts }) — paginated, ordered desc
+    - getReport({ reportId }) — returns report with resolved storage URLs (screenshotUrl, screenshotOriginalUrl, audioUrl)
+    - getReportCounts({ orgId }) — returns { total, low, medium, high, critical }
 
-    Discovery finding: Linear file upload is two-step:
-    1. fileUpload mutation → returns { uploadUrl, assetUrl }
-    2. PUT file to uploadUrl with correct headers
-    Upload URLs expire in ~60 seconds.
+    Other Convex functions available:
+    - apps.ts: listApps({ orgId }) — for app filter dropdown
+    - organizations.ts: getOrganization({ clerkOrgId }) — to resolve Clerk org to Convex org
+
+    Existing components (src/components/):
+    - ui/: button, card, input, dialog, select, badge, label, table, tooltip
+    - app-card.tsx, api-key-display.tsx, sidebar.tsx, header.tsx, dashboard-shell.tsx, providers.tsx
+
+    Dashboard layout at /dashboard/ with sidebar nav (Apps, Reports links).
+
+    This plan creates the Reports viewing UI:
+    1. Reports list page with filters (app, severity) and pagination
+    2. Report detail page with screenshot viewer, audio player, context data
+    3. Dashboard overview with report count summary cards
+
+    IMPORTANT NOTES:
+    - Use Convex React hooks: useQuery, useMutation from "convex/react"
+    - Import API references: import { api } from "../../convex/_generated/api" (adjust depth)
+    - For pagination with Convex: use usePaginatedQuery from "convex/react"
+      Usage: const { results, status, loadMore } = usePaginatedQuery(api.reports.listReports, args, { initialNumItems: 25 })
+    - Pages under /dashboard/ are client components (need "use client")
+    - The listReports function uses paginationOptsValidator — pass { numItems: 25, cursor: null } for initial
+    - Screenshots/audio come as URLs from getReport — use <img> and <audio> tags
+    - Severity colors: low=green, medium=yellow, high=orange, critical=red
+    - Category badges: bug, ui, crash, performance, other
+    - Next.js 15: params in dynamic routes is a Promise - use React.use(params) to unwrap
+    - For org context: useOrganization() → getOrganization({ clerkOrgId }) → orgId
+    - Follow existing page patterns from apps/page.tsx (loading, empty, org-select states)
   </context>
 
   <tasks>
-    <task id="task-010" type="auto">
-      <name>Implement fileUpload mutation (signed URL flow)</name>
-      <files>packages/linear/src/graphql.ts, packages/linear/src/adapter.ts</files>
+    <task id="task-001" type="auto" linear-id="SHA-11">
+      <name>Reports list page with filters and pagination</name>
+      <files>
+        apps/cloud/src/app/dashboard/reports/page.tsx,
+        apps/cloud/src/components/report-row.tsx
+      </files>
       <action>
-        Ensure FILE_UPLOAD_MUTATION is defined in graphql.ts:
-        mutation FileUpload($contentType: String!, $filename: String!, $size: Int!) {
-          fileUpload(contentType: $contentType, filename: $filename, size: $size) {
-            success
-            uploadFile { uploadUrl assetUrl headers { key value } }
-          }
-        }
+        1. Create apps/cloud/src/components/report-row.tsx:
+           - "use client"
+           - Table row showing: title, app name, severity badge, category badge, date
+           - Click navigates to /dashboard/reports/[reportId]
+           - Severity badge colors: low=green, medium=yellow, high=orange, critical=red
+           - Category as secondary badge
 
-        Add a helper function requestUploadUrl(apiKey, apiUrl, filename, contentType, size) that:
-        - Calls FILE_UPLOAD_MUTATION via linearFetch
-        - Returns { uploadUrl, assetUrl, headers }
-        - Throws ShakeNbakeError on failure
+        2. Create apps/cloud/src/app/dashboard/reports/page.tsx:
+           - "use client"
+           - Use usePaginatedQuery(api.reports.listReports, { orgId, appId?, severity? }, { initialNumItems: 25 })
+           - Use useQuery(api.apps.listApps, { orgId }) for app filter dropdown
+           - Filter bar: app dropdown (Select), severity dropdown (Select)
+           - Results table with ReportRow components
+           - "Load more" button when status === "CanLoadMore"
+           - Empty state: "No reports yet" with description about SDK integration
+           - Loading state with spinner
+           - Handle no-org state: "Select an organization" prompt
       </action>
-      <verify>cd packages/linear && npx tsc --noEmit</verify>
-      <done>requestUploadUrl function exists and compiles. FILE_UPLOAD_MUTATION is defined.</done>
+      <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
+      <done>Reports list page shows paginated reports with app/severity filters. TypeScript compiles.</done>
     </task>
 
-    <task id="task-011" type="auto">
-      <name>Implement uploadImage (PUT to signed URL)</name>
-      <files>packages/linear/src/adapter.ts</files>
+    <task id="task-002" type="auto" linear-id="SHA-11">
+      <name>Report detail page with media viewers</name>
+      <files>
+        apps/cloud/src/app/dashboard/reports/[reportId]/page.tsx
+      </files>
       <action>
-        Complete the uploadImage(imageData: Buffer | Blob, filename: string) method in LinearAdapter:
-        1. Determine content type from filename extension (png → image/png, jpg → image/jpeg, webm → audio/webm)
-        2. Determine size from imageData (Buffer.byteLength or Blob.size)
-        3. Call requestUploadUrl to get signed URL and asset URL
-        4. PUT imageData to uploadUrl with:
-           - Content-Type header
-           - Cache-Control: public, max-age=31536000
-           - Any additional headers from the fileUpload response
-        5. Return assetUrl string
-        6. Handle both Buffer (Node.js/RN) and Blob (browser) inputs
-        7. Wrap errors as ShakeNbakeError with UPLOAD_FAILED code
+        1. Create apps/cloud/src/app/dashboard/reports/[reportId]/page.tsx:
+           - "use client"
+           - Get reportId from params (React.use(params))
+           - useQuery(api.reports.getReport, { reportId }) for full report with URLs
+           - Report header: title, severity badge, category badge, date
+           - Screenshot section: if screenshotUrl, show image in Card
+             * Click to view original (screenshotOriginalUrl) in new tab or modal
+             * If no screenshot, show placeholder
+           - Audio section: if audioUrl, show HTML5 audio player
+             * If audioTranscript exists, show transcript text below
+           - Context data section: render report.context as formatted JSON in a code block
+           - Custom metadata section: if customMetadata, render as formatted JSON
+           - Forwarded issue link: if forwardedIssueUrl, show link badge
+           - Back link to /dashboard/reports
+           - Loading state and not-found state
       </action>
-      <verify>cd packages/linear && npx tsc --noEmit</verify>
-      <done>uploadImage is fully implemented. Handles Buffer and Blob. Calls requestUploadUrl then PUTs to signed URL. Returns assetUrl.</done>
+      <verify>cd apps/cloud &amp;&amp; npx tsc --noEmit</verify>
+      <done>Report detail shows all fields: screenshot, audio, context, metadata. Loading/not-found states work.</done>
     </task>
 
-    <task id="task-012" type="auto">
-      <name>Add rate limiting, error handling, and unit tests</name>
-      <files>packages/linear/src/adapter.ts, packages/linear/src/__tests__/adapter.test.ts, packages/linear/src/__tests__/upload.test.ts</files>
+    <task id="task-003" type="auto" linear-id="SHA-11">
+      <name>Dashboard overview with report counts</name>
+      <files>
+        apps/cloud/src/app/dashboard/page.tsx
+      </files>
       <action>
-        Add rate limit handling:
-        - In linearFetch, check for HTTP 429 or GraphQL error with code RATELIMITED
-        - Throw ShakeNbakeError with RATE_LIMITED code (retryable: true)
-        - Check X-RateLimit-Remaining header if present
+        1. Update apps/cloud/src/app/dashboard/page.tsx:
+           - "use client"
+           - Get org context using useOrganization() + getOrganization
+           - Use useQuery(api.reports.getReportCounts, { orgId }) for counts
+           - Use useQuery(api.apps.listApps, { orgId }) for app count
+           - Summary cards grid:
+             * Total Reports (total count)
+             * Critical (critical count, red accent)
+             * High (high count, orange accent)
+             * Apps (number of apps)
+           - Quick links section: "View all reports", "Manage apps"
+           - Welcome message when no data yet
+           - Loading state
 
-        Ensure comprehensive error mapping:
-        - HTTP 401/403 → AUTH_FAILED (retryable: false)
-        - HTTP 429 → RATE_LIMITED (retryable: true)
-        - Network/fetch errors → NETWORK_ERROR (retryable: true)
-        - Upload PUT failures → UPLOAD_FAILED (retryable: false)
-
-        Add/update tests:
-        - Test uploadImage calls requestUploadUrl then PUTs to signed URL
-        - Test uploadImage returns assetUrl on success
-        - Test uploadImage handles Buffer input correctly
-        - Test uploadImage handles Blob input correctly
-        - Test uploadImage throws UPLOAD_FAILED on PUT failure
-        - Test rate limit detection (429 status → RATE_LIMITED error)
-        - Test auth failure (401 → AUTH_FAILED error)
-        - Test network error handling
-
-        All existing + new tests must pass.
+        2. Run full verification suite:
+           - yarn typecheck
+           - yarn lint
+           - yarn test
+           - yarn build
+           - Smoke test: dev server starts
       </action>
-      <verify>cd packages/linear && npx vitest run</verify>
-      <done>Rate limiting detection works. Error codes are correctly mapped. 70+ tests in linear package. All tests pass.</done>
+      <verify>yarn build &amp;&amp; yarn typecheck</verify>
+      <done>Dashboard shows report summary cards. Full build passes with all reports pages.</done>
     </task>
   </tasks>
 
@@ -139,9 +181,9 @@
     □ All task verify commands passed
     □ yarn typecheck passed (exit code 0)
     □ yarn lint passed (exit code 0)
-    □ yarn test passed (120+ total tests)
+    □ yarn test passed (all existing tests still pass)
     □ yarn build passed (exit code 0)
-    □ Smoke: LinearAdapter methods are all functions
+    □ Smoke: dev server starts without crashing
 
     If ANY failed: FIX and re-verify. Do NOT output PLAN_COMPLETE.
   </on-complete>

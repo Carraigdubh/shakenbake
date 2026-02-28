@@ -1,0 +1,23 @@
+{
+  "planId": "01-01",
+  "planName": "Next.js 15 + Tailwind + shadcn/ui Scaffold",
+  "agentType": "general-purpose",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "complete",
+  "currentRunId": "01-01-1-2026-02-24T00:10:00Z",
+  "tasks": [
+    { "id": "task-001", "name": "Initialize Next.js 15 in apps/cloud", "status": "done", "lastVerified": "2026-02-26T11:03:00Z" },
+    { "id": "task-002", "name": "Install and configure shadcn/ui", "status": "done", "lastVerified": "2026-02-26T11:04:00Z" },
+    { "id": "task-003", "name": "Verify monorepo integration and turbo pipeline", "status": "done", "lastVerified": "2026-02-26T11:05:00Z" }
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "runId": "01-01-1-2026-02-24T00:10:00Z",
+      "outcome": "PLAN_COMPLETE",
+      "tasksCompleted": ["task-001", "task-002", "task-003"]
+    }
+  ],
+  "lastVerificationFailure": null
+}

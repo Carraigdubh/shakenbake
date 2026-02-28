@@ -1,0 +1,32 @@
+{
+  "agent": "whycode:backend-convex-agent",
+  "planId": "security-auth",
+  "task": "Add authentication and authorization checks to all Convex query and mutation functions",
+  "convexMode": "cloud-live",
+  "modeSource": "user-decision",
+  "modeResolution": {
+    "primarySource": "docs/whycode/decisions/convex-mode.json",
+    "fallbackSource": "docs/whycode/capability-plan.json",
+    "resolvedMode": "cloud-live",
+    "confidence": "confirmed"
+  },
+  "blockedCommands": [
+    "npx convex dev",
+    "npx convex dev --local",
+    "npx convex deploy",
+    "npx convex push"
+  ],
+  "allowedValidation": [
+    "npx tsc --noEmit (typecheck only)",
+    "yarn typecheck",
+    "yarn test",
+    "yarn build"
+  ],
+  "securityScope": [
+    "CRITICAL-1: Add auth + authz to all query functions (listApps, getApp, listApiKeys, listReports, getReport, getReportCounts, getOrganization, getOrganizationById)",
+    "CRITICAL-2: Replace Math.random() with crypto.getRandomValues() in API key generation",
+    "HIGH-1: Add authorization (org membership) to all mutation functions (createApp, deleteApp, generateApiKey, revokeApiKey, ensureOrganization)",
+    "HIGH-4: Fix listReports appId filter bypassing org scope"
+  ],
+  "createdAt": "2026-02-26T00:00:00Z"
+}

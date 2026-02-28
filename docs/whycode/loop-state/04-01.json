@@ -1,0 +1,16 @@
+{
+  "planId": "04-01",
+  "planName": "Cloud-Client SDK Update",
+  "agentType": "whycode:backend-agent",
+  "maxIterations": 30,
+  "currentIteration": 1,
+  "status": "complete",
+  "currentRunId": "04-01-1-2026-02-26T12:35:00Z",
+  "tasks": [
+    { "id": "task-001", "name": "Implement CloudAdapter class", "status": "done", "lastVerified": "2026-02-26T12:50:00Z" },
+    { "id": "task-002", "name": "Write tests (22 tests)", "status": "done", "lastVerified": "2026-02-26T12:55:00Z" },
+    { "id": "task-003", "name": "Update package.json and verify", "status": "done", "lastVerified": "2026-02-26T13:00:00Z" }
+  ],
+  "iterations": [{ "iteration": 1, "startedAt": "2026-02-26T12:35:00Z", "outcome": "PLAN_COMPLETE" }],
+  "lastVerificationFailure": null
+}

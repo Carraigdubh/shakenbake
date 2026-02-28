@@ -1,10 +1,11 @@
 {
   "install": "yarn install",
   "addDep": "yarn add",
-  "addDevDep": "yarn add -D",
+  "addDevDep": "yarn add --dev",
   "build": "yarn build",
   "test": "yarn test",
   "typecheck": "yarn typecheck",
   "lint": "yarn lint",
-  "dev": "yarn dev"
+  "dev": "yarn dev",
+  "clean": "yarn clean"
 }

@@ -114,6 +114,40 @@ export default function App() {
 
 Shake your device to trigger a bug report.
 
+### Linear Team vs Project vs URL Slug (Important)
+
+Linear issue URLs look like:
+
+`https://linear.app/<workspace-slug>/issue/TWI-123`
+
+- `<workspace-slug>` is your **workspace URL slug**. It is not a project name.
+- `TWI-123` means the issue belongs to the team with key `TWI`.
+- Project routing is controlled by `projectId` in `issueCreate`.
+
+To avoid confusion and default/backlog routing, always set both `teamId` and `projectId`:
+
+```ts
+const adapter = new LinearAdapter({
+  apiKey: process.env.EXPO_PUBLIC_LINEAR_API_KEY!,
+  teamId: process.env.EXPO_PUBLIC_LINEAR_TEAM_ID!,
+  projectId: process.env.EXPO_PUBLIC_LINEAR_PROJECT_ID!,
+});
+```
+
+If `projectId` is omitted, Linear can place issues in the team default/backlog path.
+
+You can verify where an issue landed by querying:
+
+```graphql
+query VerifyIssue($id: String!) {
+  issue(id: $id) {
+    identifier
+    team { id name key }
+    project { id name }
+  }
+}
+```
+
 ## Configuration
 
 ```tsx
